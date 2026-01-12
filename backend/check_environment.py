@@ -221,7 +221,7 @@ def check_required_env_vars() -> Dict[str, Tuple[bool, str]]:
     
     # Optional but recommended
     optional_vars = {
-        'STRIPE_API_KEY': 'Stripe payment integration',
+        'STRIPE_SECRET_KEY': 'Stripe payment integration',
         'SENDGRID_API_KEY': 'SendGrid email service',
         'SENDER_EMAIL': 'Email sender address',
         'EMERGENT_LLM_KEY': 'OpenAI API key for AI features',
