@@ -26,6 +26,14 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph
 import io
+import stripe
+import os
+from dotenv import load_dotenv
+
+load_dotenv() # Load the .env file
+
+# Set the key
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -231,6 +239,11 @@ class Review(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class PasswordUpdate(BaseModel):
+    old_password: str
+    new_password: str
+
+
 # ==================== UTILITIES ====================
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -327,6 +340,54 @@ async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@api_router.patch("/users/profile")
+async def update_profile(updates: dict, current_user: User = Depends(get_current_user)):
+    allowed_fields = ["name", "bio", "profile_image"]
+    update_data = {k: v for k, v in updates.items() if k in allowed_fields}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    await db.users.update_one({"id": current_user.id}, {"$set": update_data})
+    
+    # Sync bio with instructor profile if it exists
+    if "bio" in update_data:
+        await db.instructors.update_one({"user_id": current_user.id}, {"$set": {"bio": update_data["bio"]}})
+    
+    return {"message": "Profile updated successfully"}
+
+
+@api_router.patch("/users/profile/password")
+async def update_password(data: PasswordUpdate, current_user: User = Depends(get_current_user)):
+    user_doc = await db.users.find_one({"id": current_user.id})
+    if not user_doc or not verify_password(data.old_password, user_doc.get('password', '')):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+    
+    hashed_pw = hash_password(data.new_password)
+    await db.users.update_one({"id": current_user.id}, {"$set": {"password": hashed_pw}})
+    
+    return {"message": "Password updated successfully"}
+
+
+@api_router.get("/users/profile/{user_id}")
+async def get_public_profile(user_id: str):
+    user_doc = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Also fetch courses taught by this user if they are an instructor
+    courses = []
+    if user_doc.get('role') in ['instructor', 'admin']:
+        instructor = await db.instructors.find_one({"user_id": user_id})
+        if instructor:
+            courses = await db.courses.find({"instructor_id": instructor['id'], "status": "published"}, {"_id": 0}).to_list(100)
+        elif user_doc.get('role') == 'admin':
+            # Handle admin as instructor case if needed
+            courses = await db.courses.find({"status": "published"}, {"_id": 0}).to_list(10) # Just some courses for admin
+
+    return {**user_doc, "courses": courses}
+
+
 # ==================== INSTRUCTOR ROUTES ====================
 @api_router.post("/instructors/apply")
 async def apply_instructor(bio: str, current_user: User = Depends(get_current_user)):
@@ -375,30 +436,49 @@ async def approve_instructor(instructor_id: str, approved: bool, current_user: U
 @api_router.post("/courses", response_model=Course)
 async def create_course(course_data: dict, current_user: User = Depends(get_current_user)):
     if current_user.role not in ["instructor", "admin"]:
-        raise HTTPException(status_code=403, detail="Instructor only")
+        raise HTTPException(status_code=403, detail="Only instructors and admins can create courses")
     
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    if not instructor or instructor.get('verification_status') != 'approved':
-        raise HTTPException(status_code=403, detail="Not an approved instructor")
+    instructor_id = None
+    if current_user.role == "admin":
+        # For admin, we use their user_id as instructor_id or find their instructor profile if it exists
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if not instructor:
+            # Create a virtual instructor record for the admin if missing
+            instructor_id = f"admin-inst-{current_user.id}"
+        else:
+            instructor_id = instructor['id']
+    else:
+        # Regular instructor must be approved
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if not instructor or instructor.get('verification_status') != 'approved':
+            raise HTTPException(status_code=403, detail="Your instructor profile is not yet approved")
+        instructor_id = instructor['id']
     
-    course = Course(instructor_id=instructor['id'], **course_data)
-    doc = course.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    await db.courses.insert_one(doc)
-    return course
+    try:
+        course = Course(instructor_id=instructor_id, **course_data)
+        doc = course.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        await db.courses.insert_one(doc)
+        return course
+    except Exception as e:
+        logging.error(f"Course creation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error during course creation: {str(e)}")
 
 
 @api_router.get("/courses")
 async def get_courses(
     category: Optional[str] = None,
     status: Optional[str] = "published",
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    instructor_id: Optional[str] = None
 ):
     query = {}
     if category:
         query['category'] = category
-    if status:
+    if status and status != 'all':
         query['status'] = status
+    if instructor_id:
+        query['instructor_id'] = instructor_id
     if search:
         query['$or'] = [
             {"title": {"$regex": search, "$options": "i"}},
@@ -835,7 +915,7 @@ async def create_checkout(
     webhook_url = f"{host_url}/api/webhook/stripe"
     
     stripe_checkout = StripeCheckout(
-        api_key=os.environ.get('STRIPE_API_KEY'),
+        api_key=os.environ.get('STRIPE_SECRET_KEY'),
         webhook_url=webhook_url
     )
     
@@ -898,7 +978,7 @@ async def create_checkout(
 @api_router.get("/payments/status/{session_id}")
 async def check_payment_status(session_id: str, current_user: User = Depends(get_current_user)):
     stripe_checkout = StripeCheckout(
-        api_key=os.environ.get('STRIPE_API_KEY'),
+        api_key=os.environ.get('STRIPE_SECRET_KEY'),
         webhook_url=""
     )
     
@@ -937,7 +1017,7 @@ async def stripe_webhook(request: Request):
     signature = request.headers.get("Stripe-Signature")
     
     stripe_checkout = StripeCheckout(
-        api_key=os.environ.get('STRIPE_API_KEY'),
+        api_key=os.environ.get('STRIPE_SECRET_KEY'),
         webhook_url=""
     )
     
