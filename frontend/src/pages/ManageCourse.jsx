@@ -9,8 +9,19 @@ import AddSectionForm from '@/components/instructor/AddSectionForm';
 import AddLiveClassForm from '@/components/instructor/AddLiveClassForm';
 import AddQuizForm from '@/components/instructor/AddQuizForm';
 import LessonsList from '@/components/instructor/LessonsList';
-import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle } from 'lucide-react';
+import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -73,7 +84,10 @@ export default function ManageCourse({ user, logout }) {
 
   const handlePublish = async () => {
     try {
-      await axios.patch(`${API}/courses/${id}`, { status: 'published' });
+      const token = localStorage.getItem('token');
+      await axios.patch(`${API}/courses/${id}`, { status: 'published' }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success('Course published successfully!');
       fetchCourseData();
     } catch (error) {
@@ -83,11 +97,28 @@ export default function ManageCourse({ user, logout }) {
 
   const handleUnpublish = async () => {
     try {
-      await axios.patch(`${API}/courses/${id}`, { status: 'draft' });
+      const token = localStorage.getItem('token');
+      await axios.patch(`${API}/courses/${id}`, { status: 'draft' }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success('Course unpublished');
       fetchCourseData();
     } catch (error) {
       toast.error('Failed to unpublish course');
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/courses/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Course deleted successfully');
+      navigate('/dashboard/instructor');
+    } catch (error) {
+      toast.error('Failed to delete course');
+      console.error(error);
     }
   };
 
@@ -134,6 +165,30 @@ export default function ManageCourse({ user, logout }) {
                 Unpublish
               </Button>
             )}
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" data-testid="delete-course-btn">
+                  <Trash2 size={18} className="mr-2" />
+                  Delete Course
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the course,
+                    all its lessons, sections, quizzes, and associated content.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteCourse} className="bg-red-600 hover:bg-red-700 text-white border-transparent">
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -326,54 +381,62 @@ export default function ManageCourse({ user, logout }) {
         </Tabs>
       </div>
 
-      {showAddSection && (
-        <AddSectionForm
-          courseId={id}
-          onClose={() => setShowAddSection(false)}
-          onSuccess={() => {
-            setShowAddSection(false);
-            fetchCourseData();
-          }}
-        />
-      )}
+      {
+        showAddSection && (
+          <AddSectionForm
+            courseId={id}
+            onClose={() => setShowAddSection(false)}
+            onSuccess={() => {
+              setShowAddSection(false);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
 
-      {showAddLesson && (
-        <AddLessonForm
-          courseId={id}
-          sectionId={selectedSectionId}
-          onClose={() => {
-            setShowAddLesson(false);
-            setSelectedSectionId(null);
-          }}
-          onSuccess={() => {
-            setShowAddLesson(false);
-            setSelectedSectionId(null);
-            fetchCourseData();
-          }}
-        />
-      )}
+      {
+        showAddLesson && (
+          <AddLessonForm
+            courseId={id}
+            sectionId={selectedSectionId}
+            onClose={() => {
+              setShowAddLesson(false);
+              setSelectedSectionId(null);
+            }}
+            onSuccess={() => {
+              setShowAddLesson(false);
+              setSelectedSectionId(null);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
 
-      {showAddLiveClass && (
-        <AddLiveClassForm
-          courseId={id}
-          onClose={() => setShowAddLiveClass(false)}
-          onSuccess={() => {
-            setShowAddLiveClass(false);
-            fetchCourseData();
-          }}
-        />
-      )}
+      {
+        showAddLiveClass && (
+          <AddLiveClassForm
+            courseId={id}
+            onClose={() => setShowAddLiveClass(false)}
+            onSuccess={() => {
+              setShowAddLiveClass(false);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
 
-      {showAddQuiz && (
-        <AddQuizForm
-          courseId={id}
-          onClose={() => setShowAddQuiz(false)}
-          onSuccess={() => {
-            setShowAddQuiz(false);
-            fetchCourseData();
-          }}
-        />
-      )}
-    </div>
+      {
+        showAddQuiz && (
+          <AddQuizForm
+            courseId={id}
+            onClose={() => setShowAddQuiz(false)}
+            onSuccess={() => {
+              setShowAddQuiz(false);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
+    </div >
   );
 }

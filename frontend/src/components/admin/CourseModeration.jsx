@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Star, BookOpen } from 'lucide-react';
+import { CheckCircle, XCircle, Star, BookOpen, Trash2, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -26,7 +26,7 @@ export default function CourseModeration() {
         }),
         axios.get(`${API}/courses`)
       ]);
-      
+
       setCourses(pendingRes.data);
       setAllCourses(allCoursesRes.data);
     } catch (error) {
@@ -78,6 +78,35 @@ export default function CourseModeration() {
     }
   };
 
+  const handleUnpublishCourse = async (courseId) => {
+    const token = localStorage.getItem('token');
+    try {
+      await axios.patch(`${API}/admin/courses/${courseId}/moderate`, null, {
+        params: { approved: false },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Course unpublished');
+      fetchCourses();
+    } catch (error) {
+      toast.error('Failed to unpublish course');
+    }
+  };
+
+  const handleDeleteCourse = async (courseId) => {
+    if (!window.confirm('Are you certain you want to delete this course? This cannot be undone.')) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      await axios.delete(`${API}/courses/${courseId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Course deleted forever');
+      fetchCourses();
+    } catch (error) {
+      toast.error('Failed to delete course');
+    }
+  };
+
   const publishedCourses = allCourses.filter(c => c.status === 'published');
 
   if (loading) return <div className="loading">Loading courses...</div>;
@@ -87,7 +116,7 @@ export default function CourseModeration() {
       <div className="moderation-header">
         <h2>Course Management</h2>
         <div className="moderation-tabs">
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
             onClick={() => setActiveTab('pending')}
             data-testid="pending-tab"
@@ -95,7 +124,7 @@ export default function CourseModeration() {
             <BookOpen size={18} />
             Pending Review ({courses.length})
           </button>
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
             data-testid="published-tab"
@@ -199,15 +228,36 @@ export default function CourseModeration() {
                         )}
                       </td>
                       <td>
-                        <Button
-                          size="sm"
-                          variant={course.is_featured ? "default" : "outline"}
-                          onClick={() => handleToggleFeatured(course.id, course.is_featured)}
-                          data-testid={`feature-${course.id}`}
-                        >
-                          <Star size={16} className="mr-1" />
-                          {course.is_featured ? 'Unfeature' : 'Feature'}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={course.is_featured ? "default" : "outline"}
+                            onClick={() => handleToggleFeatured(course.id, course.is_featured)}
+                            data-testid={`feature-${course.id}`}
+                          >
+                            <Star size={16} className="mr-1" />
+                            {course.is_featured ? 'Unfeature' : 'Feature'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                            onClick={() => handleUnpublishCourse(course.id)}
+                            data-testid={`unpublish-${course.id}`}
+                          >
+                            <ShieldOff size={16} className="mr-1" />
+                            Unpublish
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteCourse(course.id)}
+                            data-testid={`delete-${course.id}`}
+                          >
+                            <Trash2 size={16} className="mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))
