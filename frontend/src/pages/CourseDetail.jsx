@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,10 +92,10 @@ export default function CourseDetail({ user, logout }) {
 
     setEnrolling(true);
     try {
-      const url = appliedCoupon 
+      const url = appliedCoupon
         ? `${API}/payments/checkout?course_id=${id}&coupon_code=${couponCode}`
         : `${API}/payments/checkout?course_id=${id}`;
-      
+
       const response = await axios.post(url);
       window.location.href = response.data.url;
     } catch (error) {
@@ -110,14 +110,14 @@ export default function CourseDetail({ user, logout }) {
   return (
     <div className="course-detail-page" data-testid="course-detail">
       <Navbar user={user} logout={logout} />
-      
+
       <div className="course-detail-container">
         <div className="course-hero">
           <div className="course-hero-content">
             <span className="course-category" data-testid="course-category">{course.category}</span>
             <h1 data-testid="course-title">{course.title}</h1>
             <p className="course-description" data-testid="course-description">{course.description}</p>
-            
+
             <div className="course-meta">
               <div className="meta-item">
                 <BookOpen size={20} />
@@ -130,14 +130,20 @@ export default function CourseDetail({ user, logout }) {
               {course.instructor && (
                 <div className="meta-item">
                   <Award size={20} />
-                  <span data-testid="instructor-name">{course.instructor.name}</span>
+                  <Link
+                    to={`/profile/${course.instructor.id}`}
+                    className="hover:text-primary transition-colors cursor-pointer"
+                    data-testid="instructor-name"
+                  >
+                    {course.instructor.name}
+                  </Link>
                 </div>
               )}
             </div>
 
             {isEnrolled ? (
               <div className="course-actions">
-                <Button 
+                <Button
                   data-testid="start-learning-btn"
                   onClick={() => navigate(`/course/${id}/learn`)}
                   size="lg"
@@ -179,9 +185,9 @@ export default function CourseDetail({ user, logout }) {
                     <div className="coupon-success">
                       <Check className="coupon-check-icon" size={18} />
                       <span>Coupon "{couponCode}" applied!</span>
-                      <button 
+                      <button
                         data-testid="remove-coupon-btn"
-                        onClick={removeCoupon} 
+                        onClick={removeCoupon}
                         className="remove-coupon-link"
                       >
                         Remove
@@ -199,7 +205,7 @@ export default function CourseDetail({ user, logout }) {
                       </div>
                       <div className="discount-info">
                         <span className="discount-badge">
-                          {appliedCoupon.coupon.discount_type === 'percentage' 
+                          {appliedCoupon.coupon.discount_type === 'percentage'
                             ? `${appliedCoupon.coupon.discount_value}% OFF`
                             : `$${appliedCoupon.coupon.discount_value} OFF`}
                         </span>
@@ -219,7 +225,7 @@ export default function CourseDetail({ user, logout }) {
                 </div>
 
                 {/* Enroll Button */}
-                <Button 
+                <Button
                   data-testid="enroll-btn"
                   onClick={handleEnroll}
                   size="lg"
@@ -231,7 +237,7 @@ export default function CourseDetail({ user, logout }) {
               </div>
             )}
           </div>
-          
+
           <div className="course-thumbnail-large">
             <img src={course.thumbnail || '/placeholder-course.png'} alt={course.title} />
           </div>
@@ -263,8 +269,8 @@ export default function CourseDetail({ user, logout }) {
         {/* Reviews Section */}
         <div className="reviews-section">
           <h2>Student Reviews</h2>
-          <CourseReviews 
-            courseId={id} 
+          <CourseReviews
+            courseId={id}
             isEnrolled={isEnrolled}
             userId={user?.id}
           />

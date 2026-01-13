@@ -20,6 +20,7 @@ import PaymentSuccess from "@/pages/PaymentSuccess";
 import PaymentCancel from "@/pages/PaymentCancel";
 import ManageCourse from "@/pages/ManageCourse";
 import BecomeInstructor from "@/pages/BecomeInstructor";
+import PublicProfile from "@/pages/PublicProfile";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -40,24 +41,24 @@ axios.interceptors.request.use(
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const token = localStorage.getItem("token");
   const userStr = localStorage.getItem("user");
-  
+
   if (!token) {
     return <Navigate to="/login" />;
   }
-  
+
   if (allowedRoles.length > 0 && userStr) {
     const user = JSON.parse(userStr);
     if (!allowedRoles.includes(user.role)) {
       return <Navigate to="/" />;
     }
   }
-  
+
   return children;
 };
 
 function App() {
   const [user, setUser] = useState(null);
-  
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -82,7 +83,7 @@ function App() {
           <Route path="/register" element={<RegisterPage setUser={setUser} />} />
           <Route path="/courses" element={<CourseCatalog user={user} logout={logout} />} />
           <Route path="/course/:id" element={<CourseDetail user={user} logout={logout} />} />
-          
+
           <Route
             path="/dashboard/student"
             element={
@@ -91,16 +92,16 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/dashboard/instructor"
             element={
-              <ProtectedRoute allowedRoles={["instructor"]}>
+              <ProtectedRoute allowedRoles={["instructor", "admin"]}>
                 <InstructorDashboard user={user} logout={logout} />
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/dashboard/admin"
             element={
@@ -109,7 +110,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/course/:id/learn"
             element={
@@ -118,7 +119,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
           <Route
             path="/profile"
             element={
@@ -127,16 +128,18 @@ function App() {
               </ProtectedRoute>
             }
           />
-          
+
+          <Route path="/profile/:id" element={<PublicProfile user={user} logout={logout} />} />
+
           <Route path="/payment/success" element={<PaymentSuccess user={user} logout={logout} />} />
           <Route path="/payment/cancel" element={<PaymentCancel user={user} logout={logout} />} />
-          
+
           <Route path="/become-instructor" element={<BecomeInstructor user={user} logout={logout} />} />
-          
+
           <Route
             path="/instructor/course/:id"
             element={
-              <ProtectedRoute allowedRoles={["instructor"]}>
+              <ProtectedRoute allowedRoles={["instructor", "admin"]}>
                 <ManageCourse user={user} logout={logout} />
               </ProtectedRoute>
             }

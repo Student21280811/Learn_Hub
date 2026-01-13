@@ -9,6 +9,7 @@ import PlatformAnalytics from '@/components/admin/PlatformAnalytics';
 import CourseModeration from '@/components/admin/CourseModeration';
 import { Users, UserCheck, BarChart3, Tag, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -133,6 +134,12 @@ export default function AdminDashboard({ user, logout }) {
           </TabsContent>
 
           <TabsContent value="courses">
+            <div className="flex justify-end mb-4">
+              <Button onClick={() => window.open('/dashboard/instructor', '_blank')}>
+                <BookOpen size={18} className="mr-2" />
+                Manage Courses (Instructor View)
+              </Button>
+            </div>
             <CourseModeration />
           </TabsContent>
 

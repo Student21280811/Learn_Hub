@@ -28,49 +28,49 @@ export default function InstructorDashboard({ user, logout }) {
   }, [user]);
 
   const fetchInstructorData = async () => {
-    // Optimization: If user object already has status (from login), skip fetch
-    if (user?.verification_status === 'pending') {
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Get instructor profile
-      const instructorsRes = await axios.get(`${API}/instructors`);
-      const myInstructor = instructorsRes.data.find(i => i.user_id === user.id);
+      let activeInstructor = null;
 
-      // If no instructor profile found, just set loading to false
-      // The UI will handle showing appropriate message
-      if (!myInstructor) {
-        setLoading(false);
-        return;
+      // 1. Get/Set Instructor Profile
+      if (user?.role === 'admin') {
+        const instructorsRes = await axios.get(`${API}/instructors`);
+        activeInstructor = instructorsRes.data.find(i => i.user_id === user.id);
+
+        if (!activeInstructor) {
+          // Virtual instructor for admin if no record exists
+          activeInstructor = { id: `admin-inst-${user.id}`, verification_status: 'approved', earnings: 0 };
+        }
+      } else {
+        // Regular instructor
+        const instructorsRes = await axios.get(`${API}/instructors`);
+        activeInstructor = instructorsRes.data.find(i => i.user_id === user.id);
+
+        if (!activeInstructor || activeInstructor.verification_status !== 'approved') {
+          // Stay in loading/pending state which is handled by the JSX return conditions
+          setInstructor(activeInstructor);
+          setLoading(false);
+          return;
+        }
       }
 
-      // Set instructor regardless of status
-      setInstructor(myInstructor);
+      setInstructor(activeInstructor);
 
-      // If not approved, stop here - don't fetch courses/stats
-      // This prevents 404 errors and unnecessary API calls for pending/rejected instructors
-      if (myInstructor.verification_status !== 'approved') {
-        setLoading(false);
-        return;
-      }
-
-      // Only fetch courses and stats for approved instructors
-      const coursesRes = await axios.get(`${API}/courses`);
-      const myCourses = coursesRes.data.filter(c => c.instructor_id === myInstructor.id);
+      // 2. Fetch Courses for this instructor (any status)
+      const coursesRes = await axios.get(`${API}/courses?instructor_id=${activeInstructor.id}&status=all`);
+      const myCourses = coursesRes.data;
       setCourses(myCourses);
 
-      // Calculate stats
+      // 3. Calculate Stats
       const publishedCourses = myCourses.filter(c => c.status === 'published');
       setStats({
         courses: publishedCourses.length,
-        students: 0, // TODO: Calculate from enrollments
-        earnings: myInstructor.earnings || 0
+        students: 0, // TODO: Implement student count from enrollments
+        earnings: activeInstructor.earnings || 0
       });
+
     } catch (error) {
-      toast.error('Failed to load instructor data');
-      console.error(error);
+      console.error('Failed to load instructor dashboard data:', error);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function InstructorDashboard({ user, logout }) {
 
   if (loading) return <div className="loading">Loading...</div>;
 
-  if (!instructor || instructor.verification_status === 'pending') {
+  if (user?.role !== 'admin' && (!instructor || instructor.verification_status === 'pending')) {
     return (
       <div data-testid="instructor-dashboard">
         <Navbar user={user} logout={logout} />
@@ -97,7 +97,7 @@ export default function InstructorDashboard({ user, logout }) {
     );
   }
 
-  if (instructor.verification_status === 'rejected') {
+  if (user?.role !== 'admin' && instructor.verification_status === 'rejected') {
     return (
       <div data-testid="instructor-dashboard">
         <Navbar user={user} logout={logout} />

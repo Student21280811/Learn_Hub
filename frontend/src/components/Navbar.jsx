@@ -30,6 +30,7 @@ export default function Navbar({ user, logout }) {
         <div className="navbar-links">
           <Link to="/" data-testid="nav-home">Home</Link>
           <Link to="/courses" data-testid="nav-courses">Courses</Link>
+          {user && <Link to="/profile" data-testid="nav-my-profile">Profile</Link>}
         </div>
 
         <div className="navbar-actions">
@@ -42,19 +43,19 @@ export default function Navbar({ user, logout }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   data-testid="nav-dashboard"
                   onClick={() => navigate(getDashboardLink())}
                 >
                   Dashboard
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   data-testid="nav-profile"
                   onClick={() => navigate('/profile')}
                 >
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   data-testid="nav-logout"
                   onClick={() => {
                     logout();
@@ -68,14 +69,14 @@ export default function Navbar({ user, logout }) {
             </DropdownMenu>
           ) : (
             <>
-              <Button 
+              <Button
                 data-testid="nav-login-btn"
-                variant="ghost" 
+                variant="ghost"
                 onClick={() => navigate('/login')}
               >
                 Login
               </Button>
-              <Button 
+              <Button
                 data-testid="nav-register-btn"
                 onClick={() => navigate('/register')}
               >
