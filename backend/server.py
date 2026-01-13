@@ -988,7 +988,9 @@ async def check_payment_status(session_id: str, current_user: User = Depends(get
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     
-    if status.payment_status == "paid" and payment['payment_status'] != 'paid':
+    # Support both "paid" and "no_payment_required" (for 100% coupons)
+    valid_statuses = ["paid", "no_payment_required"]
+    if status.payment_status in valid_statuses and payment['payment_status'] != 'paid':
         await db.payments.update_one(
             {"session_id": session_id},
             {"$set": {"payment_status": "paid"}}
@@ -1002,11 +1004,12 @@ async def check_payment_status(session_id: str, current_user: User = Depends(get
         
         # Update instructor earnings
         course = await db.courses.find_one({"id": payment['course_id']})
-        instructor_share = payment['amount'] * (1 - ADMIN_COMMISSION)
-        await db.instructors.update_one(
-            {"id": course['instructor_id']},
-            {"$inc": {"earnings": instructor_share}}
-        )
+        if course:
+            instructor_share = payment['amount'] * (1 - ADMIN_COMMISSION)
+            await db.instructors.update_one(
+                {"id": course['instructor_id']},
+                {"$inc": {"earnings": instructor_share}}
+            )
     
     return status
 
@@ -1035,10 +1038,10 @@ async def ai_course_assistant(prompt: str, current_user: User = Depends(get_curr
         raise HTTPException(status_code=403, detail="Instructor only")
     
     chat = LlmChat(
-        api_key=os.environ.get('EMERGENT_LLM_KEY'),
+        api_key=os.environ.get('GEMINI_API_KEY'),
         session_id=f"assistant-{current_user.id}",
         system_message="You are an AI assistant helping instructors create course content. Provide helpful suggestions for course descriptions, lesson titles, and quiz questions."
-    ).with_model("openai", "gpt-5-mini")
+    ).with_model("google", "gemini-2.5-flash")
     
     message = UserMessage(text=prompt)
     response = await chat.send_message(message)
@@ -1060,10 +1063,10 @@ async def ai_tutor(course_id: str, question: str, current_user: User = Depends(g
     context += "Lessons:\n" + "\n".join([f"- {l['title']}" for l in lessons])
     
     chat = LlmChat(
-        api_key=os.environ.get('EMERGENT_LLM_KEY'),
+        api_key=os.environ.get('GEMINI_API_KEY'),
         session_id=f"tutor-{current_user.id}-{course_id}",
         system_message=f"You are an AI tutor for this course. Help students understand the material.\n\n{context}"
-    ).with_model("openai", "gpt-5-mini")
+    ).with_model("google", "gemini-2.5-flash")
     
     message = UserMessage(text=question)
     response = await chat.send_message(message)
