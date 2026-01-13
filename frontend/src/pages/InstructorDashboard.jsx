@@ -55,7 +55,8 @@ export default function InstructorDashboard({ user, logout }) {
       setInstructor(activeInstructor);
 
       // 2. Fetch Courses for this instructor (any status)
-      const coursesRes = await axios.get(`${API}/courses?instructor_id=${activeInstructor.id}&status=all`);
+      const token = localStorage.getItem('token');
+      const coursesRes = await axios.get(`${API}/courses?instructor_id=${activeInstructor.id}&status=all&token=${token}`);
       const myCourses = coursesRes.data;
       setCourses(myCourses);
 

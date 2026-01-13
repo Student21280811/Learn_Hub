@@ -501,13 +501,47 @@ async def get_courses(
     category: Optional[str] = None,
     status: Optional[str] = "published",
     search: Optional[str] = None,
-    instructor_id: Optional[str] = None
+    instructor_id: Optional[str] = None,
+    token: Optional[str] = None
 ):
+    # Try to get user if token provided, but don't fail if not
+    current_user = None
+    if token:
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user_id = payload.get("sub")
+            user_doc = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+            if user_doc:
+                current_user = User(**user_doc)
+        except:
+            pass
+
     query = {}
     if category:
         query['category'] = category
-    if status and status != 'all':
-        query['status'] = status
+        
+    # Security: Only admins or owners can see non-published courses
+    if status == 'all' or status == 'draft':
+        if not current_user:
+            # Not logged in? Only see published
+            query['status'] = "published"
+        elif current_user.role == 'admin':
+            # Admin sees everything
+            pass
+        else:
+            # Instructor sees their own all/draft, but others only see published
+            # We enforce their instructor_id if they aren't admin
+            instructor = await db.instructors.find_one({"user_id": current_user.id})
+            if instructor:
+                query['instructor_id'] = instructor['id']
+                if status != 'all':
+                    query['status'] = status
+            else:
+                # Not an instructor? Only see published
+                query['status'] = "published"
+    else:
+        query['status'] = status or "published"
+
     if instructor_id:
         query['instructor_id'] = instructor_id
     if search:

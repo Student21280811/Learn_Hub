@@ -43,8 +43,22 @@ export default function ManageCourse({ user, logout }) {
         axios.get(`${API}/courses/${id}/live-classes`),
         axios.get(`${API}/quizzes/${id}`)
       ]);
-      
-      setCourse(courseRes.data);
+
+      const courseData = courseRes.data;
+
+      // Ownership check for instructors
+      if (user?.role === 'instructor') {
+        const instructorsRes = await axios.get(`${API}/instructors`);
+        const myInstructorProfile = instructorsRes.data.find(i => i.user_id === user.id);
+
+        if (!myInstructorProfile || myInstructorProfile.id !== courseData.instructor_id) {
+          toast.error('You do not have permission to manage this course');
+          navigate('/dashboard/instructor');
+          return;
+        }
+      }
+
+      setCourse(courseData);
       setSections(sectionsRes.data);
       setLessons(lessonsRes.data);
       setLiveClasses(liveClassesRes.data);
@@ -83,7 +97,7 @@ export default function ManageCourse({ user, logout }) {
   return (
     <div className="manage-course-page" data-testid="manage-course">
       <Navbar user={user} logout={logout} />
-      
+
       <div className="dashboard-container">
         <div className="course-manage-header">
           <div>
@@ -153,7 +167,7 @@ export default function ManageCourse({ user, logout }) {
                   </Button>
                 </div>
               </div>
-              
+
               {sections.length === 0 && lessons.length === 0 ? (
                 <div className="empty-state">
                   <p>No content added yet</p>
@@ -182,10 +196,10 @@ export default function ManageCourse({ user, logout }) {
                           </Button>
                         </div>
                       </div>
-                      
+
                       {section.lessons && section.lessons.length > 0 ? (
                         <div className="section-lessons">
-                          <LessonsList 
+                          <LessonsList
                             lessons={section.lessons}
                             courseId={id}
                             onRefresh={fetchCourseData}
@@ -196,14 +210,14 @@ export default function ManageCourse({ user, logout }) {
                       )}
                     </div>
                   ))}
-                  
+
                   {lessons.filter(l => !l.section_id).length > 0 && (
                     <div className="section-block">
                       <div className="section-header-block">
                         <h3>Standalone Lessons</h3>
                       </div>
                       <div className="section-lessons">
-                        <LessonsList 
+                        <LessonsList
                           lessons={lessons.filter(l => !l.section_id)}
                           courseId={id}
                           onRefresh={fetchCourseData}
@@ -228,7 +242,7 @@ export default function ManageCourse({ user, logout }) {
                   Schedule Live Class
                 </Button>
               </div>
-              
+
               {liveClasses.length === 0 ? (
                 <div className="empty-state">
                   <p>No live classes scheduled yet</p>
@@ -265,7 +279,7 @@ export default function ManageCourse({ user, logout }) {
                   Create Quiz
                 </Button>
               </div>
-              
+
               {quizzes.length === 0 ? (
                 <div className="empty-state">
                   <p>No quizzes created yet</p>
