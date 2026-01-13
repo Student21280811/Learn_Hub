@@ -45,9 +45,8 @@ export default function InstructorDashboard({ user, logout }) {
         const instructorsRes = await axios.get(`${API}/instructors`);
         activeInstructor = instructorsRes.data.find(i => i.user_id === user.id);
 
-        if (!activeInstructor || activeInstructor.verification_status !== 'approved') {
-          // Stay in loading/pending state which is handled by the JSX return conditions
-          setInstructor(activeInstructor);
+        if (!activeInstructor) {
+          // Stay in loading state if no record exists yet (should be rare due to auto-create)
           setLoading(false);
           return;
         }

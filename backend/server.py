@@ -312,8 +312,8 @@ async def register(user_data: UserCreate):
     if user.role == "instructor":
         instructor = Instructor(
             user_id=user.id,
-            verification_status="pending",
-            bio="Pending approval"
+            verification_status="approved",
+            bio="Instructor profile created"
         )
         instructor_doc = instructor.model_dump()
         instructor_doc['created_at'] = instructor_doc['created_at'].isoformat()
@@ -462,10 +462,8 @@ async def create_course(course_data: dict, current_user: User = Depends(get_curr
         else:
             instructor_id = instructor['id']
     else:
-        # Regular instructor must be approved
+        # Regular instructor (auto-approved or previously set)
         instructor = await db.instructors.find_one({"user_id": current_user.id})
-        if not instructor or instructor.get('verification_status') != 'approved':
-            raise HTTPException(status_code=403, detail="Your instructor profile is not yet approved")
         instructor_id = instructor['id']
     
     try:
