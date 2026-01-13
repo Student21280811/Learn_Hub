@@ -470,6 +470,9 @@ async def create_course(course_data: dict, current_user: User = Depends(get_curr
     
     try:
         course = Course(instructor_id=instructor_id, **course_data)
+        # Automatically approve and publish course
+        course.status = "published"
+        
         doc = course.model_dump()
         doc['created_at'] = doc['created_at'].isoformat()
         await db.courses.insert_one(doc)
@@ -528,12 +531,50 @@ async def update_course(course_id: str, updates: dict, current_user: User = Depe
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    if not instructor or instructor['id'] != course['instructor_id']:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Allow Admin or Course Owner
+    is_owner = False
+    if current_user.role != "admin":
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_owner = True
+        
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Not authorized to update this course")
+    
+    # Remove immutable fields from updates
+    updates.pop('id', None)
+    updates.pop('instructor_id', None)
     
     await db.courses.update_one({"id": course_id}, {"$set": updates})
-    return {"message": "Course updated"}
+    return {"message": "Course updated", "status": "published"}
+
+@api_router.delete("/courses/{course_id}")
+async def delete_course(course_id: str, current_user: User = Depends(get_current_user)):
+    course = await db.courses.find_one({"id": course_id})
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this course")
+        
+    # Delete course and related data
+    await db.courses.delete_one({"id": course_id})
+    await db.sections.delete_many({"course_id": course_id})
+    await db.lessons.delete_many({"course_id": course_id})
+    await db.quizzes.delete_many({"course_id": course_id})
+    await db.live_classes.delete_many({"course_id": course_id})
+    # Note: Enrollments are usually kept for audit but could be archived
+    
+    return {"message": "Course and all related content deleted successfully"}
 
 
 @api_router.post("/courses/{course_id}/lessons")
@@ -542,8 +583,16 @@ async def add_lesson(course_id: str, lesson_data: dict, current_user: User = Dep
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     lesson = Lesson(course_id=course_id, **lesson_data)
@@ -566,8 +615,16 @@ async def create_section(course_id: str, section_data: dict, current_user: User 
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     section = Section(course_id=course_id, **section_data)
@@ -596,9 +653,16 @@ async def delete_section(section_id: str, current_user: User = Depends(get_curre
         raise HTTPException(status_code=404, detail="Section not found")
     
     course = await db.courses.find_one({"id": section['course_id']})
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     # Delete section and its lessons
@@ -615,8 +679,16 @@ async def create_live_class(course_id: str, live_class_data: dict, current_user:
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     # Parse datetime
@@ -654,9 +726,16 @@ async def update_live_class(live_class_id: str, updates: dict, current_user: Use
         raise HTTPException(status_code=404, detail="Live class not found")
     
     course = await db.courses.find_one({"id": live_class['course_id']})
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     await db.live_classes.update_one({"id": live_class_id}, {"$set": updates})
@@ -670,9 +749,16 @@ async def delete_live_class(live_class_id: str, current_user: User = Depends(get
         raise HTTPException(status_code=404, detail="Live class not found")
     
     course = await db.courses.find_one({"id": live_class['course_id']})
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     await db.live_classes.delete_one({"id": live_class_id})
@@ -1215,7 +1301,7 @@ async def moderate_course(course_id: str, approved: bool, current_user: User = D
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     
-    new_status = "published" if approved else "rejected"
+    new_status = "published" if approved else "draft"
     result = await db.courses.update_one(
         {"id": course_id},
         {"$set": {"status": new_status}}
@@ -1224,7 +1310,7 @@ async def moderate_course(course_id: str, approved: bool, current_user: User = D
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    return {"message": f"Course {new_status}"}
+    return {"message": f"Course status updated to {new_status}"}
 
 
 @api_router.patch("/admin/courses/{course_id}/feature")
@@ -1276,8 +1362,16 @@ async def create_quiz(quiz_data: dict, current_user: User = Depends(get_current_
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     
-    instructor = await db.instructors.find_one({"user_id": current_user.id})
-    if not instructor or instructor['id'] != course['instructor_id']:
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     quiz = Quiz(**quiz_data)
