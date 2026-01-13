@@ -401,7 +401,7 @@ async def apply_instructor(bio: str, current_user: User = Depends(get_current_us
     if existing:
         raise HTTPException(status_code=400, detail="Already applied")
     
-    instructor = Instructor(user_id=current_user.id, bio=bio)
+    instructor = Instructor(user_id=current_user.id, bio=bio, verification_status="approved")
     doc = instructor.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     await db.instructors.insert_one(doc)
@@ -409,7 +409,7 @@ async def apply_instructor(bio: str, current_user: User = Depends(get_current_us
     # Update user role
     await db.users.update_one({"id": current_user.id}, {"$set": {"role": "instructor"}})
     
-    return {"message": "Application submitted for review", "instructor": instructor}
+    return {"message": "Instructor profile created and approved", "instructor": instructor}
 
 
 @api_router.get("/instructors")
@@ -464,7 +464,23 @@ async def create_course(course_data: dict, current_user: User = Depends(get_curr
     else:
         # Regular instructor (auto-approved or previously set)
         instructor = await db.instructors.find_one({"user_id": current_user.id})
-        instructor_id = instructor['id']
+        if not instructor:
+            # Create instructor profile on the fly if missing (recovery case)
+            instructor_id = f"inst-{current_user.id}"
+            new_instructor = {
+                "id": instructor_id,
+                "user_id": current_user.id,
+                "verification_status": "approved",
+                "earnings": 0.0,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.instructors.insert_one(new_instructor)
+        else:
+            instructor_id = instructor.get('id')
+            if not instructor_id:
+                # Fix missing ID in existing record
+                instructor_id = str(uuid.uuid4())
+                await db.instructors.update_one({"user_id": current_user.id}, {"$set": {"id": instructor_id}})
     
     try:
         course = Course(instructor_id=instructor_id, **course_data)
