@@ -9,7 +9,7 @@ const API = `${BACKEND_URL}/api`;
 
 export default function LessonsList({ lessons, courseId, onRefresh }) {
   const getLessonIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'video': return <Video size={20} />;
       case 'pdf': return <FileText size={20} />;
       default: return <BookOpen size={20} />;
@@ -18,12 +18,17 @@ export default function LessonsList({ lessons, courseId, onRefresh }) {
 
   const handleDelete = async (lessonId) => {
     if (!window.confirm('Are you sure you want to delete this lesson?')) return;
-    
+
     try {
-      // Note: We need to add delete endpoint in backend
-      toast.info('Delete functionality coming soon');
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/lessons/${lessonId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Lesson deleted successfully');
+      onRefresh();
     } catch (error) {
       toast.error('Failed to delete lesson');
+      console.error(error);
     }
   };
 

@@ -122,6 +122,34 @@ export default function ManageCourse({ user, logout }) {
     }
   };
 
+  const handleDeleteQuiz = async (quizId) => {
+    if (!window.confirm('Delete this quiz permanently?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/quizzes/${quizId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Quiz deleted');
+      fetchCourseData();
+    } catch (error) {
+      toast.error('Failed to delete quiz');
+    }
+  };
+
+  const handleDeleteLiveClass = async (liveClassId) => {
+    if (!window.confirm('Delete this live class?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/live-classes/${liveClassId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Live class deleted');
+      fetchCourseData();
+    } catch (error) {
+      toast.error('Failed to delete live class');
+    }
+  };
+
   if (loading) return <div className="loading">Loading...</div>;
   if (!course) return <div>Course not found</div>;
 
@@ -315,6 +343,16 @@ export default function ManageCourse({ user, logout }) {
                           <span className={`status-badge ${liveClass.status}`}>{liveClass.status}</span>
                         </div>
                       </div>
+                      <div className="live-class-actions">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLiveClass(liveClass.id)}
+                          data-testid={`delete-live-${liveClass.id}`}
+                        >
+                          <Trash2 size={16} className="text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -343,10 +381,22 @@ export default function ManageCourse({ user, logout }) {
                 <div className="quizzes-list">
                   {quizzes.map((quiz) => (
                     <div key={quiz.id} className="quiz-card" data-testid={`quiz-${quiz.id}`}>
-                      <HelpCircle size={24} className="quiz-icon" />
-                      <div>
-                        <h4>{quiz.title}</h4>
-                        <p>{quiz.questions.length} questions</p>
+                      <div className="flex items-center flex-1">
+                        <HelpCircle size={24} className="quiz-icon" />
+                        <div>
+                          <h4>{quiz.title}</h4>
+                          <p>{quiz.questions.length} questions</p>
+                        </div>
+                      </div>
+                      <div className="quiz-actions">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteQuiz(quiz.id)}
+                          data-testid={`delete-quiz-${quiz.id}`}
+                        >
+                          <Trash2 size={16} className="text-red-500" />
+                        </Button>
                       </div>
                     </div>
                   ))}

@@ -28,7 +28,12 @@ from reportlab.platypus import Paragraph
 import io
 import stripe
 import os
+import bcrypt
 from dotenv import load_dotenv
+
+# Bcrypt compatibility patch for passlib
+if not hasattr(bcrypt, "__about__"):
+    bcrypt.__about__ = type('About', (object,), {'__version__': bcrypt.__version__})
 
 load_dotenv() # Load the .env file
 
@@ -654,6 +659,29 @@ async def add_lesson(course_id: str, lesson_data: dict, current_user: User = Dep
 async def get_lessons(course_id: str):
     lessons = await db.lessons.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(1000)
     return lessons
+
+
+@api_router.delete("/lessons/{lesson_id}")
+async def delete_lesson(lesson_id: str, current_user: User = Depends(get_current_user)):
+    lesson = await db.lessons.find_one({"id": lesson_id})
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    course = await db.courses.find_one({"id": lesson['course_id']})
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.lessons.delete_one({"id": lesson_id})
+    return {"message": "Lesson deleted"}
 
 
 # ==================== SECTION ROUTES ====================
@@ -1355,7 +1383,7 @@ async def moderate_course(course_id: str, approved: bool, current_user: User = D
         {"$set": {"status": new_status}}
     )
     
-    if result.modified_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Course not found")
     
     return {"message": f"Course status updated to {new_status}"}
@@ -1371,7 +1399,7 @@ async def toggle_featured_course(course_id: str, featured: bool, current_user: U
         {"$set": {"is_featured": featured}}
     )
     
-    if result.modified_count == 0:
+    if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Course not found")
     
     status = "featured" if featured else "unfeatured"
@@ -1433,6 +1461,29 @@ async def create_quiz(quiz_data: dict, current_user: User = Depends(get_current_
 async def get_quizzes(course_id: str):
     quizzes = await db.quizzes.find({"course_id": course_id}, {"_id": 0}).to_list(1000)
     return quizzes
+
+
+@api_router.delete("/quizzes/{quiz_id}")
+async def delete_quiz(quiz_id: str, current_user: User = Depends(get_current_user)):
+    quiz = await db.quizzes.find_one({"id": quiz_id})
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    
+    course = await db.courses.find_one({"id": quiz['course_id']})
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.quizzes.delete_one({"id": quiz_id})
+    return {"message": "Quiz deleted"}
 
 
 @api_router.post("/quizzes/{quiz_id}/submit")
