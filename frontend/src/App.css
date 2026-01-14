@@ -12,7 +12,12 @@ body {
   line-height: 1.6;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 600;
   line-height: 1.2;
@@ -441,6 +446,53 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+/* Status Banners */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.pending-banner {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.rejected-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.status-banner span {
+  flex: 1;
+  font-weight: 500;
+}
+
+.status-banner button {
+  color: inherit;
+  font-weight: 600;
+  padding: 0;
+  height: auto;
 }
 
 .dashboard-header {
@@ -939,6 +991,78 @@ h1, h2, h3, h4, h5, h6 {
   color: #6b7280;
 }
 
+/* ==================== BECOME INSTRUCTOR ==================== */
+.become-instructor-page {
+  padding: 4rem 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.instructor-application-container {
+  background: white;
+  padding: 3rem;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.application-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.header-icon {
+  color: #10b981;
+  margin-bottom: 1rem;
+}
+
+.application-status-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.status-card {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border-radius: 1.5rem;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.status-card.pending {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.status-card.approved {
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+}
+
+.status-card.rejected {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.status-icon {
+  margin-bottom: 1rem;
+}
+
+.pending .status-icon {
+  color: #d97706;
+}
+
+.approved .status-icon {
+  color: #059669;
+}
+
+.rejected .status-icon {
+  color: #dc2626;
+}
+
 /* ==================== PAYMENT PAGES ==================== */
 .payment-success-page,
 .payment-cancel-page {
@@ -985,6 +1109,7 @@ h1, h2, h3, h4, h5, h6 {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -1200,7 +1325,9 @@ h1, h2, h3, h4, h5, h6 {
   color: #374151;
 }
 
-.text-content h1, .text-content h2, .text-content h3 {
+.text-content h1,
+.text-content h2,
+.text-content h3 {
   color: #1a1a1a;
   margin-top: 1.5rem;
   margin-bottom: 1rem;
@@ -1210,7 +1337,8 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 1rem;
 }
 
-.text-content ul, .text-content ol {
+.text-content ul,
+.text-content ol {
   margin-left: 1.5rem;
   margin-bottom: 1rem;
 }
@@ -2361,9 +2489,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -3409,31 +3540,31 @@ h1, h2, h3, h4, h5, h6 {
   .navbar-links {
     display: none;
   }
-  
+
   .hero-title {
     font-size: 2rem;
   }
-  
+
   .stats-container {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .courses-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .course-hero {
     grid-template-columns: 1fr;
   }
-  
+
   .enrollment-card {
     flex-direction: column;
   }
-  
+
   .enrollment-thumbnail {
     width: 100%;
   }
-  
+
   .payment-actions {
     flex-direction: column;
   }

@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/Navbar';
 import CertificateCard from '@/components/student/CertificateCard';
-import { BookOpen, Award, TrendingUp } from 'lucide-react';
+import { BookOpen, Award, TrendingUp, AlertCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -15,6 +15,7 @@ const API = `${BACKEND_URL}/api`;
 export default function StudentDashboard({ user, logout }) {
   const [enrollments, setEnrollments] = useState([]);
   const [certificates, setCertificates] = useState([]);
+  const [instructorStatus, setInstructorStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -26,12 +27,18 @@ export default function StudentDashboard({ user, logout }) {
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
-      const [enrollmentsRes, certificatesRes] = await Promise.all([
+      const [enrollmentsRes, certificatesRes, instructorsRes] = await Promise.all([
         axios.get(`${API}/enrollments/my-courses`, { headers }),
-        axios.get(`${API}/certificates/my-certificates`, { headers })
+        axios.get(`${API}/certificates/my-certificates`, { headers }),
+        axios.get(`${API}/instructors`, { headers })
       ]);
       setEnrollments(enrollmentsRes.data);
       setCertificates(certificatesRes.data);
+
+      const myInstructor = instructorsRes.data.find(i => i.user_id === user?.id);
+      if (myInstructor) {
+        setInstructorStatus(myInstructor.verification_status);
+      }
     } catch (error) {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -47,6 +54,23 @@ export default function StudentDashboard({ user, logout }) {
       <Navbar user={user} logout={logout} />
 
       <div className="dashboard-container">
+        {/* Instructor Application Status Banner */}
+        {instructorStatus === 'pending' && (
+          <div className="status-banner pending-banner">
+            <Clock size={20} />
+            <span>Your instructor application is under review. We'll notify you once approved.</span>
+            <Button variant="link" onClick={() => navigate('/become-instructor')}>View Details</Button>
+          </div>
+        )}
+
+        {instructorStatus === 'rejected' && (
+          <div className="status-banner rejected-banner">
+            <AlertCircle size={20} />
+            <span>Your instructor application was not approved. Please check details or contact support.</span>
+            <Button variant="link" onClick={() => navigate('/become-instructor')}>View Details</Button>
+          </div>
+        )}
+
         <div className="dashboard-header">
           <div>
             <h1 data-testid="dashboard-title">Welcome back, {user?.name}!</h1>

@@ -341,18 +341,25 @@ async def register(user_data: UserCreate):
     hashed_pw = hash_password(password)
     
     user = User(**user_dict)
+    
+    # Force role to student for new signups (even if they requested instructor)
+    # They will be promoted after approval
+    requested_role = user.role
+    user.role = "student"
+    
     user_doc = user.model_dump()
     user_doc['password'] = hashed_pw
+    user_doc['role'] = "student"
     user_doc['created_at'] = user_doc['created_at'].isoformat()
     
     await db.users.insert_one(user_doc)
     
     # AUTO-CREATE INSTRUCTOR DOCUMENT if user registers as instructor
-    if user.role == "instructor":
+    if requested_role == "instructor":
         instructor = Instructor(
             user_id=user.id,
-            verification_status="approved",
-            bio="Instructor profile created"
+            verification_status="pending",
+            bio="Instructor registration"
         )
         instructor_doc = instructor.model_dump()
         instructor_doc['created_at'] = instructor_doc['created_at'].isoformat()
@@ -445,15 +452,14 @@ async def apply_instructor(bio: str, current_user: User = Depends(get_current_us
     if existing:
         raise HTTPException(status_code=400, detail="Already applied")
     
-    instructor = Instructor(user_id=current_user.id, bio=bio, verification_status="approved")
+    instructor = Instructor(user_id=current_user.id, bio=bio, verification_status="pending")
     doc = instructor.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     await db.instructors.insert_one(doc)
     
-    # Update user role
-    await db.users.update_one({"id": current_user.id}, {"$set": {"role": "instructor"}})
+    # role remains student until admin approves
     
-    return {"message": "Instructor profile created and approved", "instructor": instructor}
+    return {"message": "Instructor application submitted and pending approval", "instructor": instructor}
 
 
 @api_router.get("/instructors")
@@ -486,6 +492,13 @@ async def approve_instructor(instructor_id: str, approved: bool, current_user: U
     
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Instructor not found")
+        
+    # Promote user to instructor role if approved
+    if approved:
+        instructor = await db.instructors.find_one({"id": instructor_id})
+        if instructor:
+            await db.users.update_one({"id": instructor['user_id']}, {"$set": {"role": "instructor"}})
+            logger.info(f"Promoted user {instructor['user_id']} to instructor")
     
     return {"message": f"Instructor {new_status}"}
 
