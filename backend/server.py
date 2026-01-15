@@ -109,10 +109,19 @@ class Course(BaseModel):
     description: str
     category: str
     price: float
+    discount_price: Optional[float] = None
     thumbnail: Optional[str] = None
     status: str = "draft"  # draft, published, archived, rejected
     video_platform: Optional[str] = "youtube"  # youtube, vimeo
     preview_video: Optional[str] = None
+    difficulty_level: str = "Beginner"  # Beginner, Intermediate, Advanced
+    language: str = "English"
+    requirements: List[str] = []
+    outcomes: List[str] = []
+    faqs: List[Dict[str, str]] = []  # List of {"question": str, "answer": str}
+    meta_keywords: Optional[str] = None
+    meta_description: Optional[str] = None
+    drip_content: bool = False
     is_featured: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
