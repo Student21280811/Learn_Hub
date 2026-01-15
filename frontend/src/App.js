@@ -21,6 +21,8 @@ import PaymentCancel from "@/pages/PaymentCancel";
 import ManageCourse from "@/pages/ManageCourse";
 import BecomeInstructor from "@/pages/BecomeInstructor";
 import PublicProfile from "@/pages/PublicProfile";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -144,6 +146,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" />

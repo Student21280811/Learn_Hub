@@ -32,7 +32,10 @@ class LlmChat:
         model_mapping = {
             "gpt-5-mini": "gpt-4o-mini",
             "gpt-5": "gpt-4o",
-            "gemini-2.5-flash": "gemini-2.5-flash", # Using the requested model name
+            "gemini-2.5-flash": "gemini-2.5-flash",
+            "llama-70b": "llama-3.3-70b-versatile",
+            "llama-8b": "llama3-8b-8192",
+            "mixtral-8x7b": "mixtral-8x7b-32768"
         }
         self.model = model_mapping.get(model, model)
         return self
@@ -65,6 +68,25 @@ class LlmChat:
                 
                 response = await model.generate_content_async(message.text)
                 return response.text
+            
+            elif self.provider == "groq":
+                # Groq is OpenAI-compatible
+                client = openai.AsyncOpenAI(
+                    api_key=self.api_key,
+                    base_url="https://api.groq.com/openai/v1"
+                )
+                
+                messages = []
+                if self.system_message:
+                    messages.append({"role": "system", "content": self.system_message})
+                messages.append({"role": "user", "content": message.text})
+                
+                response = await client.chat.completions.create(
+                    model=self.model,
+                    messages=messages
+                )
+                
+                return response.choices[0].message.content
                 
             else:
                 return f"Unsupported provider: {self.provider}"

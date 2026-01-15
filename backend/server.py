@@ -8,6 +8,10 @@ import os
 import tempfile
 import logging
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict, Any
 import uuid
@@ -27,21 +31,14 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph
 import io
 import stripe
-import os
-import bcrypt
-from dotenv import load_dotenv
-
 # Bcrypt compatibility patch for passlib
 if not hasattr(bcrypt, "__about__"):
     bcrypt.__about__ = type('About', (object,), {'__version__': bcrypt.__version__})
 
-load_dotenv() # Load the .env file
-
-# Set the key
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+# Set Stripe key
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
@@ -259,6 +256,15 @@ class PasswordUpdate(BaseModel):
     new_password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 # ==================== UTILITIES ====================
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -273,6 +279,57 @@ def create_access_token(data: dict):
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+async def send_reset_email(email: str, token: str):
+    print(f"DEBUG: Entering send_reset_email for {email}")
+    try:
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+        reset_link = f"{frontend_url}/reset-password?token={token}"
+        
+        # CLEARLY PRINT THE LINK TO THE CONSOLE FOR THE USER
+        print("\n" + "="*50)
+        print(f"PASSWORD RESET LINK FOR: {email}")
+        print(reset_link)
+        print("="*50 + "\n")
+        
+        logger.info(f"Password Reset Link generated: {reset_link}")
+
+        api_key = os.environ.get('SENDGRID_API_KEY')
+        sender = os.environ.get('SENDER_EMAIL')
+        
+        print(f"DEBUG: SendGrid API Key exists: {bool(api_key)}")
+        print(f"DEBUG: Sender Email: {sender}")
+
+        if not api_key or "your_api_key_here" in api_key:
+            logger.warning("SendGrid API Key not configured. Skipping email send.")
+            return
+
+        if not sender or "yourdomain.com" in sender:
+            logger.warning("Sender email not configured correctly. Skipping email send.")
+            return
+
+        message = Mail(
+            from_email=sender,
+            to_emails=email,
+            subject='Reset Your LearnHub Password',
+            html_content=f"""
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+                    <h1 style="color: #1e40af; font-size: 24px;">Reset Your Password</h1>
+                    <p style="color: #374151; line-height: 1.5;">You requested to reset your password for LearnHub. Click the button below to set a new password. This link is valid for 1 hour.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_link}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
+                    </div>
+                    <p style="color: #6b7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
+                </div>
+            """
+        )
+        
+        sg = SendGridAPIClient(api_key)
+        sg.send(message)
+        logger.info(f"Password reset email sent to {email}")
+    except Exception as e:
+        logger.error(f"Failed to send reset email: {str(e)}")
 
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -399,6 +456,54 @@ async def login(credentials: UserLogin):
         
     token = create_access_token({"sub": user.id, "role": user.role})
     return {"token": token, "user": user}
+
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest, background_tasks: BackgroundTasks):
+    print(f"DEBUG: Forgot Password requested for: {data.email}")
+    user_doc = await db.users.find_one({"email": data.email})
+    
+    if not user_doc:
+        print(f"DEBUG: User NOT found in database: {data.email}")
+        return {"message": "If an account exists with this email, a reset link has been sent."}
+    
+    print(f"DEBUG: User found: {user_doc.get('id')} - {user_doc.get('email')}")
+    
+    # Create a short-lived reset token (1 hour)
+    reset_data = {"sub": user_doc["id"], "type": "reset"}
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    reset_data.update({"exp": expire})
+    
+    try:
+        reset_token = jwt.encode(reset_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        print("DEBUG: Reset token generated successfully")
+    except Exception as e:
+        print(f"DEBUG: TOKEN GENERATION FAILED: {str(e)}")
+        raise HTTPException(status_code=500, detail="Token generation failed")
+    
+    background_tasks.add_task(send_reset_email, data.email, reset_token)
+    print("DEBUG: Background task 'send_reset_email' scheduled")
+    
+    return {"message": "If an account exists with this email, a reset link has been sent."}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: ResetPasswordRequest):
+    try:
+        payload = jwt.decode(data.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "reset":
+            raise HTTPException(status_code=400, detail="Invalid token type")
+        
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=400, detail="Invalid token")
+            
+        hashed_pw = hash_password(data.new_password)
+        await db.users.update_one({"id": user_id}, {"$set": {"password": hashed_pw}})
+        
+        return {"message": "Password reset successfully. You can now log in."}
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
 
 @api_router.get("/auth/me")
@@ -1353,10 +1458,10 @@ async def ai_course_assistant(prompt: str, current_user: User = Depends(get_curr
         raise HTTPException(status_code=403, detail="Instructor only")
     
     chat = LlmChat(
-        api_key=os.environ.get('GEMINI_API_KEY'),
+        api_key=os.environ.get('GROQ_API_KEY'),
         session_id=f"assistant-{current_user.id}",
         system_message="You are an AI assistant helping instructors create course content. Provide helpful suggestions for course descriptions, lesson titles, and quiz questions."
-    ).with_model("google", "gemini-2.5-flash")
+    ).with_model("groq", "llama-70b")
     
     message = UserMessage(text=prompt)
     response = await chat.send_message(message)
@@ -1426,10 +1531,10 @@ async def ai_tutor(course_id: str, question: str, current_user: User = Depends(g
     context += "Lessons:\n" + "\n".join([f"- {l['title']}" for l in lessons])
     
     chat = LlmChat(
-        api_key=os.environ.get('GEMINI_API_KEY'),
+        api_key=os.environ.get('GROQ_API_KEY'),
         session_id=f"tutor-{current_user.id}-{course_id}",
         system_message=f"You are an AI tutor for this course. Help students understand the material.\n\n{context}"
-    ).with_model("google", "gemini-2.5-flash")
+    ).with_model("groq", "llama-70b")
     
     message = UserMessage(text=question)
     response = await chat.send_message(message)

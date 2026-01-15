@@ -23,13 +23,13 @@ export default function LoginPage({ setUser }) {
     try {
       const response = await axios.post(`${API}/auth/login`, { email, password });
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       setUser(user);
-      
+
       toast.success('Login successful!');
-      
+
       // Redirect based on role
       if (user.role === 'admin') {
         navigate('/dashboard/admin');
@@ -69,7 +69,16 @@ export default function LoginPage({ setUser }) {
           </div>
 
           <div className="form-group">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-primary hover:underline"
+                data-testid="forgot-password-link"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <Input
               id="password"
               data-testid="password-input"
@@ -81,10 +90,10 @@ export default function LoginPage({ setUser }) {
             />
           </div>
 
-          <Button 
+          <Button
             data-testid="login-submit-btn"
-            type="submit" 
-            className="w-full" 
+            type="submit"
+            className="w-full"
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign In'}
