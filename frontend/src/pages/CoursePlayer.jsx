@@ -87,7 +87,12 @@ export default function CoursePlayer({ user, logout }) {
       // Load completed lessons from storage
       const saved = localStorage.getItem(`completed_lessons_${id}`);
       if (saved) {
-        setCompletedLessons(new Set(JSON.parse(saved)));
+        const savedLessons = new Set(JSON.parse(saved));
+        // Filter out lessons that no longer exist
+        const validLessons = new Set(
+          [...savedLessons].filter(id => lessonsRes.data.some(l => l.id === id))
+        );
+        setCompletedLessons(validLessons);
       }
     } catch (error) {
       toast.error('Failed to load course');
@@ -110,7 +115,8 @@ export default function CoursePlayer({ user, logout }) {
     localStorage.setItem(`completed_lessons_${id}`, JSON.stringify([...newCompleted]));
 
     // Calculate progress
-    const progress = (newCompleted.size / lessons.length) * 100;
+    const rawProgress = (newCompleted.size / lessons.length) * 100;
+    const progress = Math.min(100, rawProgress);
 
     const token = localStorage.getItem('token');
     // Update progress on backend
