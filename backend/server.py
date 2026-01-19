@@ -1462,8 +1462,16 @@ async def create_checkout(
     frontend_url = os.environ.get('FRONTEND_URL', host_url).rstrip('/')
     webhook_url = f"{host_url}/api/webhook/stripe"
     
+    stripe_key = os.environ.get('STRIPE_SECRET_KEY')
+    if not stripe_key:
+        print("CRITICAL ERROR: STRIPE_SECRET_KEY is missing from environment variables!")
+        raise HTTPException(
+            status_code=500, 
+            detail="Server configuration error: Stripe API Key is missing. Please set STRIPE_SECRET_KEY in your environment variables."
+        )
+
     stripe_checkout = StripeCheckout(
-        api_key=os.environ.get('STRIPE_SECRET_KEY'),
+        api_key=stripe_key,
         webhook_url=webhook_url
     )
     
