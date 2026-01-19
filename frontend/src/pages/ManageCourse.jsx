@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Navbar from '@/components/Navbar';
 import AddLessonForm from '@/components/instructor/AddLessonForm';
+import EditLessonForm from '@/components/instructor/EditLessonForm';
 import AddSectionForm from '@/components/instructor/AddSectionForm';
 import AddLiveClassForm from '@/components/instructor/AddLiveClassForm';
 import AddQuizForm from '@/components/instructor/AddQuizForm';
@@ -38,6 +39,7 @@ export default function ManageCourse({ user, logout }) {
   const [showAddSection, setShowAddSection] = useState(false);
   const [showAddLiveClass, setShowAddLiveClass] = useState(false);
   const [showAddQuiz, setShowAddQuiz] = useState(false);
+  const [editingLesson, setEditingLesson] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const navigate = useNavigate();
 
@@ -289,6 +291,7 @@ export default function ManageCourse({ user, logout }) {
                             lessons={section.lessons}
                             courseId={id}
                             onRefresh={fetchCourseData}
+                            onEdit={(lesson) => setEditingLesson(lesson)}
                           />
                         </div>
                       ) : (
@@ -307,6 +310,7 @@ export default function ManageCourse({ user, logout }) {
                           lessons={lessons.filter(l => !l.section_id)}
                           courseId={id}
                           onRefresh={fetchCourseData}
+                          onEdit={(lesson) => setEditingLesson(lesson)}
                         />
                       </div>
                     </div>
@@ -459,6 +463,19 @@ export default function ManageCourse({ user, logout }) {
             onSuccess={() => {
               setShowAddLesson(false);
               setSelectedSectionId(null);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
+
+      {
+        editingLesson && (
+          <EditLessonForm
+            lesson={editingLesson}
+            onClose={() => setEditingLesson(null)}
+            onSuccess={() => {
+              setEditingLesson(null);
               fetchCourseData();
             }}
           />

@@ -58,6 +58,14 @@ export default function LessonsList({ lessons, courseId, onRefresh }) {
           </div>
           <div className="lesson-actions">
             <Button
+              data-testid={`edit-lesson-${lesson.id}`}
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit && onEdit(lesson)}
+            >
+              <Edit size={16} className="text-gray-500" />
+            </Button>
+            <Button
               data-testid={`delete-lesson-${lesson.id}`}
               variant="ghost"
               size="sm"

@@ -897,6 +897,40 @@ async def get_lessons(course_id: str, request: Request):
     return lessons
 
 
+@api_router.patch("/lessons/{lesson_id}")
+async def update_lesson(lesson_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    lesson = await db.lessons.find_one({"id": lesson_id})
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+        
+    course = await db.courses.find_one({"id": lesson['course_id']})
+    
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    # Remove immutable fields
+    updates.pop('id', None)
+    updates.pop('course_id', None)
+    updates.pop('created_at', None)
+    
+    if not updates:
+        return lesson
+        
+    await db.lessons.update_one({"id": lesson_id}, {"$set": updates})
+    
+    updated_lesson = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
+    return updated_lesson
+
+
 @api_router.delete("/lessons/{lesson_id}")
 async def delete_lesson(lesson_id: str, current_user: User = Depends(get_current_user)):
     lesson = await db.lessons.find_one({"id": lesson_id})
@@ -1377,6 +1411,53 @@ async def create_checkout(
                             final_price = max(0, original_price - discount_amount)
                             coupon_id = coupon['id']
     
+    # SPECIAL HANDLING FOR FREE COURSES (Price 0 or 100% Discount)
+    if final_price <= 0:
+        # Generate internal session ID
+        session_id = f"free-{uuid.uuid4()}"
+        
+        # Create payment record (DIRECTLY PAID)
+        payment = Payment(
+            user_id=current_user.id,
+            course_id=course_id,
+            amount=0.0,
+            original_amount=original_price,
+            discount_amount=discount_amount,
+            coupon_code=coupon_code,
+            session_id=session_id,
+            payment_status="paid"
+        )
+        payment_doc = payment.model_dump()
+        payment_doc['created_at'] = payment_doc['created_at'].isoformat()
+        await db.payments.insert_one(payment_doc)
+        
+        # Create enrollment immediately
+        enrollment = Enrollment(user_id=current_user.id, course_id=course_id)
+        enroll_doc = enrollment.model_dump()
+        enroll_doc['enrolled_at'] = enroll_doc['enrolled_at'].isoformat()
+        await db.enrollments.insert_one(enroll_doc)
+        
+        # Track coupon usage
+        if coupon_id:
+            coupon_usage = CouponUsage(
+                coupon_id=coupon_id,
+                user_id=current_user.id,
+                course_id=course_id,
+                discount_amount=discount_amount
+            )
+            usage_doc = coupon_usage.model_dump()
+            usage_doc['used_at'] = usage_doc['used_at'].isoformat()
+            await db.coupon_usage.insert_one(usage_doc)
+            
+            await db.coupons.update_one(
+                {"id": coupon_id},
+                {"$inc": {"used_count": 1}}
+            )
+            
+        # Return success URL directly
+        success_url = f"{frontend_url}/payment/success?session_id={session_id}"
+        return {"url": success_url, "session_id": session_id}
+
     host_url = str(request.base_url).rstrip('/')
     frontend_url = os.environ.get('FRONTEND_URL', host_url).rstrip('/')
     webhook_url = f"{host_url}/api/webhook/stripe"
@@ -1386,8 +1467,8 @@ async def create_checkout(
         webhook_url=webhook_url
     )
     
-    success_url = f"{host_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = f"{host_url}/payment/cancel"
+    success_url = f"{frontend_url}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{frontend_url}/payment/cancel"
     
     checkout_request = CheckoutSessionRequest(
         amount=final_price,
@@ -1444,6 +1525,13 @@ async def create_checkout(
 
 @api_router.get("/payments/status/{session_id}")
 async def check_payment_status(session_id: str, current_user: User = Depends(get_current_user)):
+    # Internal Free Session Check
+    if session_id.startswith("free-"):
+        payment = await db.payments.find_one({"session_id": session_id})
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment not found")
+        return {"payment_status": "paid", "session_id": session_id}
+
     stripe_checkout = StripeCheckout(
         api_key=os.environ.get('STRIPE_SECRET_KEY'),
         webhook_url=""
