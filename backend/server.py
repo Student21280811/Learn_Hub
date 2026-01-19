@@ -1407,6 +1407,20 @@ async def create_checkout(
                                 discount_amount = min(coupon['discount_value'], original_price)
                             
                             coupon_id = coupon['id']
+                            print(f"[DEBUG] Coupon applied: {coupon_code}, Discount: {discount_amount}, Final Price: {original_price - discount_amount}")
+                        else:
+                            print(f"[DEBUG] Coupon {coupon_code} already used by user {current_user.id}")
+                    else:
+                        print(f"[DEBUG] Coupon {coupon_code} not applicable to course {course_id}")
+                else:
+                    print(f"[DEBUG] Coupon {coupon_code} usage limit reached")
+            else:
+                print(f"[DEBUG] Coupon {coupon_code} expired or not started. Now: {now}, Valid: {valid_from}-{valid_until}")
+        else:
+            print(f"[DEBUG] Coupon {coupon_code} not found or inactive")
+
+    final_price = max(0.0, original_price - discount_amount)
+    print(f"[DEBUG] Checkout Final Calculation - Original: {original_price}, Discount: {discount_amount}, Final: {final_price}")
     
     host_url = str(request.base_url).rstrip('/')
     frontend_url = os.environ.get('FRONTEND_URL', host_url).rstrip('/')
