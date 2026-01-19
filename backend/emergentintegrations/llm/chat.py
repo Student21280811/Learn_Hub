@@ -4,8 +4,8 @@ LLM Chat implementation using both OpenAI and Google Gemini.
 
 from dataclasses import dataclass
 from typing import Optional
-import openai
-import google.generativeai as genai
+from dataclasses import dataclass
+from typing import Optional
 import os
 
 
@@ -44,6 +44,7 @@ class LlmChat:
         """Send a message and get response"""
         try:
             if self.provider == "openai":
+                import openai
                 client = openai.AsyncOpenAI(api_key=self.api_key)
                 
                 messages = []
@@ -59,6 +60,7 @@ class LlmChat:
                 return response.choices[0].message.content
             
             elif self.provider == "google":
+                import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
                 # Note: For Gemini 2.5, using the generativeai SDK
                 model = genai.GenerativeModel(

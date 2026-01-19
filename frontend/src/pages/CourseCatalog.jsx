@@ -14,6 +14,15 @@ const categories = ['Programming', 'Design', 'Business', 'Marketing', 'Photograp
 
 export default function CourseCatalog({ user, logout }) {
   const [courses, setCourses] = useState([]);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
   const filteredCourses = React.useMemo(() => {
     let filtered = [...courses];
 
