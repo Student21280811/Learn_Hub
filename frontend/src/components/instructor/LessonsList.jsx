@@ -1,13 +1,13 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Video, FileText, BookOpen, Trash2 } from 'lucide-react';
+import { Video, FileText, BookOpen, Trash2, Edit } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-export default function LessonsList({ lessons, courseId, onRefresh }) {
+export default function LessonsList({ lessons, courseId, onRefresh, onEdit }) {
   const getLessonIcon = (type) => {
     switch (type) {
       case 'video': return <Video size={20} />;

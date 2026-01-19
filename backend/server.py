@@ -63,6 +63,10 @@ ADMIN_COMMISSION = float(os.environ.get('ADMIN_COMMISSION', 0.15))
 
 # Create the main app
 app = FastAPI(title="LearnHub API")
+
+# Mount Uploads directory for static access
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 api_router = APIRouter(prefix="/api")
 
 
@@ -592,12 +596,6 @@ async def get_instructors(status: Optional[str] = None):
     instructors = await db.instructors.find(query, {"_id": 0}).to_list(1000)
     
     # Ensure all instructors have stable IDs
-    for inst in instructors:
-        if "id" not in inst:
-            new_id = str(uuid.uuid4())
-            await db.instructors.update_one({"user_id": inst['user_id']}, {"$set": {"id": new_id}})
-            inst['id'] = new_id
-            
     return instructors
 
 
@@ -1408,8 +1406,10 @@ async def create_checkout(
                             else:  # fixed
                                 discount_amount = min(coupon['discount_value'], original_price)
                             
-                            final_price = max(0, original_price - discount_amount)
                             coupon_id = coupon['id']
+    
+    host_url = str(request.base_url).rstrip('/')
+    frontend_url = os.environ.get('FRONTEND_URL', host_url).rstrip('/')
     
     # SPECIAL HANDLING FOR FREE COURSES (Price 0 or 100% Discount)
     if final_price <= 0:

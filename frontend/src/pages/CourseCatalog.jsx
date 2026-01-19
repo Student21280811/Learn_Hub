@@ -14,25 +14,26 @@ const categories = ['Programming', 'Design', 'Business', 'Marketing', 'Photograp
 
 export default function CourseCatalog({ user, logout }) {
   const [courses, setCourses] = useState([]);
-  const [filteredCourses, setFilteredCourses] = useState([]);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const filteredCourses = React.useMemo(() => {
+    let filtered = [...courses];
 
-  useEffect(() => {
-    fetchCourses();
-  }, []);
+    if (search) {
+      filtered = filtered.filter(course =>
+        course.title.toLowerCase().includes(search.toLowerCase()) ||
+        course.description.toLowerCase().includes(search.toLowerCase())
+      );
+    }
 
-  useEffect(() => {
-    filterCourses();
+    if (category && category !== 'all') {
+      filtered = filtered.filter(course => course.category === category);
+    }
+    return filtered;
   }, [search, category, courses]);
 
   const fetchCourses = async () => {
     try {
       const response = await axios.get(`${API}/courses?status=published`);
       setCourses(response.data);
-      setFilteredCourses(response.data);
     } catch (error) {
       console.error('Error fetching courses:', error);
     } finally {
@@ -40,27 +41,10 @@ export default function CourseCatalog({ user, logout }) {
     }
   };
 
-  const filterCourses = () => {
-    let filtered = [...courses];
-    
-    if (search) {
-      filtered = filtered.filter(course => 
-        course.title.toLowerCase().includes(search.toLowerCase()) ||
-        course.description.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-    
-    if (category && category !== 'all') {
-      filtered = filtered.filter(course => course.category === category);
-    }
-    
-    setFilteredCourses(filtered);
-  };
-
   return (
     <div className="catalog-page" data-testid="course-catalog">
       <Navbar user={user} logout={logout} />
-      
+
       <div className="catalog-container">
         <div className="catalog-header">
           <h1 data-testid="catalog-title">Explore Courses</h1>
@@ -79,7 +63,7 @@ export default function CourseCatalog({ user, logout }) {
               className="search-input"
             />
           </div>
-          
+
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger data-testid="category-filter" className="category-select">
               <SelectValue placeholder="Category" />
@@ -111,9 +95,9 @@ export default function CourseCatalog({ user, logout }) {
                     <p className="course-description">{course.description.substring(0, 120)}...</p>
                     <div className="course-footer">
                       <span className="course-price" data-testid={`price-${course.id}`}>${course.price}</span>
-                      <Button 
+                      <Button
                         data-testid={`view-course-${course.id}`}
-                        onClick={() => navigate(`/course/${course.id}`)} 
+                        onClick={() => navigate(`/course/${course.id}`)}
                         size="sm"
                       >
                         View Details
