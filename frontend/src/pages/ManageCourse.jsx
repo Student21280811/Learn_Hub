@@ -296,21 +296,23 @@ export default function ManageCourse({ user, logout }) {
                           {section.description && <p className="section-desc">{section.description}</p>}
                         </div>
                         {isEditing && (
-                          <div className="section-actions" style={{ display: 'flex', gap: '8px' }}>
-                            <button
+                          <div className="section-actions" style={{ display: 'flex', gap: '4px' }}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => toast.info('Edit section feature coming soon')}
-                              className="icon-button"
                               title="Edit section"
                             >
-                              <Edit size={16} />
-                            </button>
-                            <button
+                              <Edit size={16} className="text-gray-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleDeleteSection(section.id)}
-                              className="icon-button delete-icon"
                               title="Delete section"
                             >
-                              <Trash2 size={16} />
-                            </button>
+                              <Trash2 size={16} className="text-red-500" />
+                            </Button>
                           </div>
                         )}
                       </div>
