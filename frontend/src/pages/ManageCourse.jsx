@@ -10,7 +10,7 @@ import AddSectionForm from '@/components/instructor/AddSectionForm';
 import AddLiveClassForm from '@/components/instructor/AddLiveClassForm';
 import AddQuizForm from '@/components/instructor/AddQuizForm';
 import LessonsList from '@/components/instructor/LessonsList';
-import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -156,6 +156,20 @@ export default function ManageCourse({ user, logout }) {
     }
   };
 
+  const handleDeleteSection = async (sectionId) => {
+    if (!window.confirm('Delete this section and all its lessons?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API}/sections/${sectionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success('Section deleted');
+      fetchCourseData();
+    } catch (error) {
+      toast.error('Failed to delete section');
+    }
+  };
+
   if (loading) return <div className="loading">Loading...</div>;
   if (!course) return <div>Course not found</div>;
 
@@ -281,21 +295,24 @@ export default function ManageCourse({ user, logout }) {
                           <h3>Section {sIndex + 1}: {section.title}</h3>
                           {section.description && <p className="section-desc">{section.description}</p>}
                         </div>
-                        <div className="section-actions">
-                          {isEditing && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedSectionId(section.id);
-                                setShowAddLesson(true);
-                              }}
+                        {isEditing && (
+                          <div className="section-actions" style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => toast.info('Edit section feature coming soon')}
+                              className="icon-button"
+                              title="Edit section"
                             >
-                              <Plus size={16} className="mr-1" />
-                              Add Lesson
-                            </Button>
-                          )}
-                        </div>
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSection(section.id)}
+                              className="icon-button delete-icon"
+                              title="Delete section"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {section.lessons && section.lessons.length > 0 ? (
