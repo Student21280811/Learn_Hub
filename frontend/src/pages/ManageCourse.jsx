@@ -251,21 +251,24 @@ export default function ManageCourse({ user, logout }) {
             <div className="structure-section">
               <div className="section-header">
                 <h2>Course Structure</h2>
-                <div className="action-buttons">
+                <div className="action-buttons" style={{ display: 'flex', gap: '4px' }}>
                   <Button
                     data-testid="add-section-btn"
                     onClick={() => setShowAddSection(true)}
-                    variant="outline"
+                    variant="ghost"
+                    size="sm"
+                    title="Add Section"
                   >
-                    <FolderPlus size={18} className="mr-2" />
-                    Add Section
+                    <FolderPlus size={16} className="text-gray-500" />
                   </Button>
                   <Button
                     data-testid="add-lesson-btn"
                     onClick={() => setShowAddLesson(true)}
+                    variant="ghost"
+                    size="sm"
+                    title="Add Lesson"
                   >
-                    <Plus size={18} className="mr-2" />
-                    Add Lesson
+                    <Plus size={16} className="text-gray-500" />
                   </Button>
                 </div>
               </div>
