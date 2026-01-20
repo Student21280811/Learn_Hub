@@ -41,7 +41,6 @@ export default function ManageCourse({ user, logout }) {
   const [showAddQuiz, setShowAddQuiz] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -197,14 +196,6 @@ export default function ManageCourse({ user, logout }) {
             </div>
           </div>
           <div className="header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <Button
-              variant={isEditing ? "secondary" : "outline"}
-              onClick={() => setIsEditing(!isEditing)}
-              data-testid="edit-mode-toggle"
-            >
-              {isEditing ? 'Done Editing' : 'Edit Content'}
-            </Button>
-
             {course.status === 'draft' ? (
               <Button
                 data-testid="publish-btn"
@@ -260,25 +251,23 @@ export default function ManageCourse({ user, logout }) {
             <div className="structure-section">
               <div className="section-header">
                 <h2>Course Structure</h2>
-                {isEditing && (
-                  <div className="action-buttons">
-                    <Button
-                      data-testid="add-section-btn"
-                      onClick={() => setShowAddSection(true)}
-                      variant="outline"
-                    >
-                      <FolderPlus size={18} className="mr-2" />
-                      Add Section
-                    </Button>
-                    <Button
-                      data-testid="add-lesson-btn"
-                      onClick={() => setShowAddLesson(true)}
-                    >
-                      <Plus size={18} className="mr-2" />
-                      Add Lesson
-                    </Button>
-                  </div>
-                )}
+                <div className="action-buttons">
+                  <Button
+                    data-testid="add-section-btn"
+                    onClick={() => setShowAddSection(true)}
+                    variant="outline"
+                  >
+                    <FolderPlus size={18} className="mr-2" />
+                    Add Section
+                  </Button>
+                  <Button
+                    data-testid="add-lesson-btn"
+                    onClick={() => setShowAddLesson(true)}
+                  >
+                    <Plus size={18} className="mr-2" />
+                    Add Lesson
+                  </Button>
+                </div>
               </div>
 
               {sections.length === 0 && lessons.length === 0 ? (
@@ -295,26 +284,24 @@ export default function ManageCourse({ user, logout }) {
                           <h3>Section {sIndex + 1}: {section.title}</h3>
                           {section.description && <p className="section-desc">{section.description}</p>}
                         </div>
-                        {isEditing && (
-                          <div className="section-actions" style={{ display: 'flex', gap: '4px' }}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toast.info('Edit section feature coming soon')}
-                              title="Edit section"
-                            >
-                              <Edit size={16} className="text-gray-500" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteSection(section.id)}
-                              title="Delete section"
-                            >
-                              <Trash2 size={16} className="text-red-500" />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="section-actions" style={{ display: 'flex', gap: '4px' }}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toast.info('Edit section feature coming soon')}
+                            title="Edit section"
+                          >
+                            <Edit size={16} className="text-gray-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSection(section.id)}
+                            title="Delete section"
+                          >
+                            <Trash2 size={16} className="text-red-500" />
+                          </Button>
+                        </div>
                       </div>
 
                       {section.lessons && section.lessons.length > 0 ? (
@@ -356,15 +343,13 @@ export default function ManageCourse({ user, logout }) {
             <div className="live-classes-section">
               <div className="section-header">
                 <h2>Live Classes</h2>
-                {isEditing && (
-                  <Button
-                    data-testid="add-live-class-btn"
-                    onClick={() => setShowAddLiveClass(true)}
-                  >
-                    <Video size={18} className="mr-2" />
-                    Schedule Live Class
-                  </Button>
-                )}
+                <Button
+                  data-testid="add-live-class-btn"
+                  onClick={() => setShowAddLiveClass(true)}
+                >
+                  <Video size={18} className="mr-2" />
+                  Schedule Live Class
+                </Button>
               </div>
 
               {liveClasses.length === 0 ? (
@@ -385,16 +370,14 @@ export default function ManageCourse({ user, logout }) {
                         </div>
                       </div>
                       <div className="live-class-actions">
-                        {isEditing && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteLiveClass(liveClass.id)}
-                            data-testid={`delete-live-${liveClass.id}`}
-                          >
-                            <Trash2 size={16} className="text-red-500" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteLiveClass(liveClass.id)}
+                          data-testid={`delete-live-${liveClass.id}`}
+                        >
+                          <Trash2 size={16} className="text-red-500" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -407,15 +390,13 @@ export default function ManageCourse({ user, logout }) {
             <div className="quizzes-section">
               <div className="section-header">
                 <h2>Quizzes</h2>
-                {isEditing && (
-                  <Button
-                    data-testid="add-quiz-btn"
-                    onClick={() => setShowAddQuiz(true)}
-                  >
-                    <HelpCircle size={18} className="mr-2" />
-                    Create Quiz
-                  </Button>
-                )}
+                <Button
+                  data-testid="add-quiz-btn"
+                  onClick={() => setShowAddQuiz(true)}
+                >
+                  <HelpCircle size={18} className="mr-2" />
+                  Create Quiz
+                </Button>
               </div>
 
               {quizzes.length === 0 ? (
@@ -434,16 +415,14 @@ export default function ManageCourse({ user, logout }) {
                         </div>
                       </div>
                       <div className="quiz-actions">
-                        {isEditing && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteQuiz(quiz.id)}
-                            data-testid={`delete-quiz-${quiz.id}`}
-                          >
-                            <Trash2 size={16} className="text-red-500" />
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteQuiz(quiz.id)}
+                          data-testid={`delete-quiz-${quiz.id}`}
+                        >
+                          <Trash2 size={16} className="text-red-500" />
+                        </Button>
                       </div>
                     </div>
                   ))}
