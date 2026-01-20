@@ -41,6 +41,7 @@ export default function ManageCourse({ user, logout }) {
   const [showAddQuiz, setShowAddQuiz] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -182,6 +183,14 @@ export default function ManageCourse({ user, logout }) {
             </div>
           </div>
           <div className="header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <Button
+              variant={isEditing ? "secondary" : "outline"}
+              onClick={() => setIsEditing(!isEditing)}
+              data-testid="edit-mode-toggle"
+            >
+              {isEditing ? 'Done Editing' : 'Edit Content'}
+            </Button>
+
             {course.status === 'draft' ? (
               <Button
                 data-testid="publish-btn"
@@ -237,23 +246,25 @@ export default function ManageCourse({ user, logout }) {
             <div className="structure-section">
               <div className="section-header">
                 <h2>Course Structure</h2>
-                <div className="action-buttons">
-                  <Button
-                    data-testid="add-section-btn"
-                    onClick={() => setShowAddSection(true)}
-                    variant="outline"
-                  >
-                    <FolderPlus size={18} className="mr-2" />
-                    Add Section
-                  </Button>
-                  <Button
-                    data-testid="add-lesson-btn"
-                    onClick={() => setShowAddLesson(true)}
-                  >
-                    <Plus size={18} className="mr-2" />
-                    Add Lesson
-                  </Button>
-                </div>
+                {isEditing && (
+                  <div className="action-buttons">
+                    <Button
+                      data-testid="add-section-btn"
+                      onClick={() => setShowAddSection(true)}
+                      variant="outline"
+                    >
+                      <FolderPlus size={18} className="mr-2" />
+                      Add Section
+                    </Button>
+                    <Button
+                      data-testid="add-lesson-btn"
+                      onClick={() => setShowAddLesson(true)}
+                    >
+                      <Plus size={18} className="mr-2" />
+                      Add Lesson
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {sections.length === 0 && lessons.length === 0 ? (
@@ -271,17 +282,19 @@ export default function ManageCourse({ user, logout }) {
                           {section.description && <p className="section-desc">{section.description}</p>}
                         </div>
                         <div className="section-actions">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedSectionId(section.id);
-                              setShowAddLesson(true);
-                            }}
-                          >
-                            <Plus size={16} className="mr-1" />
-                            Add Lesson
-                          </Button>
+                          {isEditing && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedSectionId(section.id);
+                                setShowAddLesson(true);
+                              }}
+                            >
+                              <Plus size={16} className="mr-1" />
+                              Add Lesson
+                            </Button>
+                          )}
                         </div>
                       </div>
 
@@ -324,13 +337,15 @@ export default function ManageCourse({ user, logout }) {
             <div className="live-classes-section">
               <div className="section-header">
                 <h2>Live Classes</h2>
-                <Button
-                  data-testid="add-live-class-btn"
-                  onClick={() => setShowAddLiveClass(true)}
-                >
-                  <Video size={18} className="mr-2" />
-                  Schedule Live Class
-                </Button>
+                {isEditing && (
+                  <Button
+                    data-testid="add-live-class-btn"
+                    onClick={() => setShowAddLiveClass(true)}
+                  >
+                    <Video size={18} className="mr-2" />
+                    Schedule Live Class
+                  </Button>
+                )}
               </div>
 
               {liveClasses.length === 0 ? (
@@ -351,14 +366,16 @@ export default function ManageCourse({ user, logout }) {
                         </div>
                       </div>
                       <div className="live-class-actions">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteLiveClass(liveClass.id)}
-                          data-testid={`delete-live-${liveClass.id}`}
-                        >
-                          <Trash2 size={16} className="text-red-500" />
-                        </Button>
+                        {isEditing && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLiveClass(liveClass.id)}
+                            data-testid={`delete-live-${liveClass.id}`}
+                          >
+                            <Trash2 size={16} className="text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -371,13 +388,15 @@ export default function ManageCourse({ user, logout }) {
             <div className="quizzes-section">
               <div className="section-header">
                 <h2>Quizzes</h2>
-                <Button
-                  data-testid="add-quiz-btn"
-                  onClick={() => setShowAddQuiz(true)}
-                >
-                  <HelpCircle size={18} className="mr-2" />
-                  Create Quiz
-                </Button>
+                {isEditing && (
+                  <Button
+                    data-testid="add-quiz-btn"
+                    onClick={() => setShowAddQuiz(true)}
+                  >
+                    <HelpCircle size={18} className="mr-2" />
+                    Create Quiz
+                  </Button>
+                )}
               </div>
 
               {quizzes.length === 0 ? (
@@ -396,14 +415,16 @@ export default function ManageCourse({ user, logout }) {
                         </div>
                       </div>
                       <div className="quiz-actions">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteQuiz(quiz.id)}
-                          data-testid={`delete-quiz-${quiz.id}`}
-                        >
-                          <Trash2 size={16} className="text-red-500" />
-                        </Button>
+                        {isEditing && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteQuiz(quiz.id)}
+                            data-testid={`delete-quiz-${quiz.id}`}
+                          >
+                            <Trash2 size={16} className="text-red-500" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}

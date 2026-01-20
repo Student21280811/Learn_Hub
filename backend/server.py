@@ -862,7 +862,7 @@ async def add_lesson(course_id: str, lesson_data: dict, current_user: User = Dep
     lesson = Lesson(course_id=course_id, **lesson_data)
     doc = lesson.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
-    await db.lessons.insert_one(doc)
+    await db.lessons.insert_one(doc)    
     
     # NEW: Reset completion status for all enrolled students
     # When a new lesson is added, completed courses should become "active" again
