@@ -1,0 +1,99 @@
+/* Stripe Connect Card Styles */
+.stripe-connect-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stripe-connect-card.connected {
+    border-color: #10b981;
+    background: linear-gradient(to bottom, #f0fdf4, white);
+}
+
+.stripe-connect-card.disconnected {
+    border-color: #f59e0b;
+    background: linear-gradient(to bottom, #fffbeb, white);
+}
+
+.stripe-connect-card.loading {
+    opacity: 0.6;
+}
+
+.stripe-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.stripe-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: #111827;
+}
+
+.status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.status-badge.success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.stripe-content {
+    margin-top: 16px;
+}
+
+.success-message {
+    color: #065f46;
+    font-size: 14px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.warning-message {
+    color: #92400e;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.info-message {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 16px;
+    line-height: 1.5;
+}
+
+.stripe-details {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.stripe-details small {
+    color: #6b7280;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+}
+
+.connect-stripe-btn {
+    margin-top: 8px;
+}

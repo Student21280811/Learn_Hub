@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import CreateCourseForm from '@/components/instructor/CreateCourseForm';
 import CoursesList from '@/components/instructor/CoursesList';
 import EarningsView from '@/components/instructor/EarningsView';
+import StripeConnectCard from '@/components/instructor/StripeConnectCard';
 import { Plus, BookOpen, DollarSign, Users, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,7 +20,23 @@ export default function InstructorDashboard({ user, logout }) {
   const [stats, setStats] = useState({ courses: 0, students: 0, earnings: 0 });
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check for Stripe connection callback
+    const stripeConnected = searchParams.get('stripe_connected');
+    const stripeError = searchParams.get('stripe_error');
+
+    if (stripeConnected === 'true') {
+      toast.success('Stripe account connected successfully! You\'ll receive 90% of course sales.');
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/instructor');
+    } else if (stripeError === 'true') {
+      toast.error('Failed to connect Stripe account. Please try again.');
+      window.history.replaceState({}, '', '/dashboard/instructor');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) {
@@ -183,6 +200,7 @@ export default function InstructorDashboard({ user, logout }) {
           </TabsContent>
 
           <TabsContent value="earnings">
+            <StripeConnectCard />
             <EarningsView
               instructorId={instructor.id}
               totalEarnings={stats.earnings}

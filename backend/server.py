@@ -1640,6 +1640,96 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ==================== STRIPE CONNECT OAUTH ====================
+@api_router.get("/payments/stripe/connect")
+async def stripe_connect_oauth(current_user: User = Depends(get_current_user)):
+    """Generate Stripe Connect OAuth URL for instructors"""
+    if current_user.role not in ["instructor", "admin"]:
+        raise HTTPException(status_code=403, detail="Only instructors can connect Stripe accounts")
+    
+    # Get Stripe client ID from environment
+    client_id = os.environ.get('STRIPE_CLIENT_ID')
+    if not client_id:
+        raise HTTPException(
+            status_code=500,
+            detail="Stripe Connect not configured. Please set STRIPE_CLIENT_ID."
+        )
+    
+    # Generate OAuth URL
+    frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+    redirect_uri = f"{frontend_url}/api/payments/stripe/callback"
+    
+    oauth_url = (
+        f"https://connect.stripe.com/oauth/authorize"
+        f"?response_type=code"
+        f"&client_id={client_id}"
+        f"&scope=read_write"
+        f"&redirect_uri={redirect_uri}"
+        f"&state={current_user.id}"  # Pass user ID to identify after redirect
+    )
+    
+    return {"url": oauth_url}
+
+
+@api_router.get("/payments/stripe/callback")
+async def stripe_connect_callback(code: str, state: str):
+    """Handle Stripe OAuth callback and save instructor's stripe_account_id"""
+    try:
+        # Exchange authorization code for stripe_user_id
+        client_secret = os.environ.get('STRIPE_SECRET_KEY')
+        
+        response = stripe.OAuth.token(
+            grant_type='authorization_code',
+            code=code,
+        )
+        
+        stripe_account_id = response['stripe_user_id']
+        user_id = state  # user_id passed via state parameter
+        
+        # Update instructor's Stripe account ID
+        instructor = await db.instructors.find_one({"user_id": user_id})
+        if not instructor:
+            raise HTTPException(status_code=404, detail="Instructor profile not found")
+        
+        await db.instructors.update_one(
+            {"user_id": user_id},
+            {"$set": {"stripe_account_id": stripe_account_id}}
+        )
+        
+        logger.info(f"Stripe account connected for instructor {instructor['id']}: {stripe_account_id}")
+        
+        # Redirect to instructor settings with success message
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+        return RedirectResponse(url=f"{frontend_url}/dashboard/instructor?stripe_connected=true")
+        
+    except stripe.oauth_error.OAuthError as e:
+        logger.error(f"Stripe OAuth error: {e}")
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+        return RedirectResponse(url=f"{frontend_url}/dashboard/instructor?stripe_error=true")
+    except Exception as e:
+        logger.error(f"Error in Stripe callback: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/payments/stripe/status")
+async def get_stripe_connection_status(current_user: User = Depends(get_current_user)):
+    """Check if current instructor has connected Stripe account"""
+    if current_user.role not in ["instructor", "admin"]:
+        return {"connected": False, "message": "Not an instructor"}
+    
+    instructor = await db.instructors.find_one({"user_id": current_user.id})
+    if not instructor:
+        return {"connected": False, "message": "Instructor profile not found"}
+    
+    stripe_account_id = instructor.get('stripe_account_id')
+    
+    return {
+        "connected": bool(stripe_account_id),
+        "stripe_account_id": stripe_account_id if stripe_account_id else None
+    }
+
+
+
 # ==================== AI ROUTES ====================
 @api_router.post("/ai/course-assistant")
 async def ai_course_assistant(prompt: str, current_user: User = Depends(get_current_user)):
