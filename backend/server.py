@@ -1515,7 +1515,23 @@ async def create_checkout(
         }
     )
     
-    session = await stripe_checkout.create_checkout_session(checkout_request)
+    # NEW: Fetch instructor's Stripe account for payment splitting
+    instructor_stripe_id = None
+    try:
+        instructor = await db.instructors.find_one({"id": course['instructor_id']})
+        if instructor and instructor.get('stripe_account_id'):
+            instructor_stripe_id = instructor['stripe_account_id']
+            print(f"[DEBUG] Payment splitting enabled for instructor {instructor['id']}: {instructor_stripe_id}")
+        else:
+            print(f"[DEBUG] No Stripe account for instructor {course['instructor_id']}, 100% to platform")
+    except Exception as e:
+        print(f"[DEBUG] Error fetching instructor Stripe account: {e}")
+        # Continue with 100% to platform if error occurs
+    
+    session = await stripe_checkout.create_checkout_session(
+        checkout_request, 
+        instructor_stripe_account_id=instructor_stripe_id
+    )
     
     # Create payment record
     payment = Payment(

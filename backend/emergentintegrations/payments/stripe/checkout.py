@@ -41,15 +41,20 @@ class StripeCheckout:
         self.webhook_url = webhook_url
         stripe.api_key = api_key
     
-    async def create_checkout_session(self, request: CheckoutSessionRequest) -> CheckoutSessionResponse:
-        """Create a Stripe checkout session"""
+    async def create_checkout_session(
+        self, 
+        request: CheckoutSessionRequest,
+        instructor_stripe_account_id: Optional[str] = None
+    ) -> CheckoutSessionResponse:
+        """Create a Stripe checkout session with optional payment splitting"""
         try:
             # Convert amount to cents
             amount_cents = int(request.amount * 100)
             
-            session = stripe.checkout.Session.create(
-                payment_method_types=["card"],
-                line_items=[{
+            # Prepare checkout session parameters
+            session_params = {
+                "payment_method_types": ["card"],
+                "line_items": [{
                     "price_data": {
                         "currency": request.currency,
                         "unit_amount": amount_cents,
@@ -59,11 +64,26 @@ class StripeCheckout:
                     },
                     "quantity": 1,
                 }],
-                mode="payment",
-                success_url=request.success_url,
-                cancel_url=request.cancel_url,
-                metadata=request.metadata,
-            )
+                "mode": "payment",
+                "success_url": request.success_url,
+                "cancel_url": request.cancel_url,
+                "metadata": request.metadata,
+            }
+            
+            # Add payment splitting if instructor has Stripe account connected
+            if instructor_stripe_account_id:
+                # Calculate platform fee (10%)
+                platform_fee_cents = int(amount_cents * 0.10)
+                
+                # Configure payment to split: 90% to instructor, 10% to platform
+                session_params["payment_intent_data"] = {
+                    "application_fee_amount": platform_fee_cents,
+                    "transfer_data": {
+                        "destination": instructor_stripe_account_id
+                    }
+                }
+            
+            session = stripe.checkout.Session.create(**session_params)
             
             return CheckoutSessionResponse(
                 session_id=session.id,
