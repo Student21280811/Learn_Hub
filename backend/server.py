@@ -1729,6 +1729,90 @@ async def get_stripe_connection_status(current_user: User = Depends(get_current_
     }
 
 
+# ==================== TEST ENDPOINT (DEVELOPMENT ONLY) ====================
+@api_router.get("/test-split")
+async def test_payment_split():
+    """
+    Test endpoint to verify Stripe payment splitting logic.
+    Returns the session data to inspect payment_intent_data.
+    """
+    try:
+        # Hardcoded test values
+        test_price = 100.00  # $100
+        test_instructor_stripe_id = "acct_123456789"  # Dummy Stripe account
+        
+        # Get Stripe key
+        stripe_key = os.environ.get('STRIPE_SECRET_KEY')
+        if not stripe_key:
+            return {"error": "STRIPE_SECRET_KEY not configured"}
+        
+        # Create Stripe checkout instance
+        stripe_checkout = StripeCheckout(
+            api_key=stripe_key,
+            webhook_url=""
+        )
+        
+        # Prepare test checkout request
+        checkout_request = CheckoutSessionRequest(
+            amount=test_price,
+            currency="usd",
+            success_url="http://localhost:3000/test-success",
+            cancel_url="http://localhost:3000/test-cancel",
+            metadata={
+                "test": "true",
+                "course_id": "test-course-123"
+            }
+        )
+        
+        # Call create_checkout_session with instructor Stripe ID
+        session = await stripe_checkout.create_checkout_session(
+            checkout_request,
+            instructor_stripe_account_id=test_instructor_stripe_id
+        )
+        
+        # Retrieve full session from Stripe to inspect payment_intent_data
+        full_session = stripe.checkout.Session.retrieve(session.session_id)
+        
+        # Return relevant data for verification
+        return {
+            "test_configuration": {
+                "price": test_price,
+                "price_in_cents": int(test_price * 100),
+                "instructor_stripe_id": test_instructor_stripe_id,
+                "expected_platform_fee": int(test_price * 100 * 0.10),
+                "expected_instructor_amount": int(test_price * 100 * 0.90)
+            },
+            "session_data": {
+                "session_id": full_session.id,
+                "amount_total": full_session.amount_total,
+                "payment_intent": full_session.payment_intent,
+                "mode": full_session.mode,
+                "status": full_session.status
+            },
+            "payment_intent_details": {
+                "note": "Check Stripe Dashboard for payment_intent details",
+                "payment_intent_id": full_session.payment_intent,
+                "expected_application_fee_amount": 1000,  # 10% of $100 = $10 = 1000 cents
+                "expected_transfer_destination": test_instructor_stripe_id
+            },
+            "verification": {
+                "instructions": [
+                    "1. Copy the payment_intent ID from above",
+                    "2. Go to Stripe Dashboard > Payments > Search for payment_intent",
+                    "3. Check 'Application fee' = $10.00",
+                    "4. Check 'Transfer destination' = acct_123456789",
+                    "Or use Stripe CLI: stripe payment_intents retrieve <payment_intent_id>"
+                ]
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "note": "Make sure STRIPE_SECRET_KEY is set and valid"
+        }
+
+
 
 # ==================== AI ROUTES ====================
 @api_router.post("/ai/course-assistant")
