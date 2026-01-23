@@ -33,6 +33,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph
 import io
 import stripe
+import newsletter  # Newsletter module for weekly emails
 # Bcrypt compatibility patch for passlib
 import bcrypt
 if not hasattr(bcrypt, "__about__"):
@@ -246,6 +247,38 @@ class Certificate(BaseModel):
     user_id: str
     course_id: str
     issued_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BlogPost(BaseModel):
+    """Blog posts for weekly newsletter"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    slug: str  # URL-friendly: "why-python-is-perfect"
+    content: str  # Markdown content
+    excerpt: str  # Short summary
+    cover_image: Optional[str] = None
+    course_id: Optional[str] = None  # Related course
+    author_id: str
+    category: str = "Newsletter"
+    status: str = "published"
+    views: int = 0
+    sent_to_subscribers: bool = False
+    email_sent_count: int = 0
+    published_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class EmailSubscription(BaseModel):
+    """Newsletter email subscriptions"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None  # For registered users
+    email: EmailStr
+    subscribed: bool = True
+    unsubscribe_token: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    subscription_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Review(BaseModel):
@@ -2589,6 +2622,93 @@ async def payment_cancel_redirect():
     frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
     logger.info(f"Redirecting cancellation to {frontend_url}")
     return RedirectResponse(url=f"{frontend_url}/payment/cancel")
+
+
+# ==================== NEWSLETTER ENDPOINTS ====================
+@api_router.post("/newsletter/subscribe")
+async def subscribe_newsletter(email: EmailStr):
+    """Subscribe to weekly newsletter"""
+    try:
+        existing = await db.email_subscriptions.find_one({"email": email})
+        if existing and existing['subscribed']:
+            return {"message": "Already subscribed", "success": False}
+        
+        if existing:
+            await db.email_subscriptions.update_one(
+                {"email": email},
+                {"$set": {"subscribed": True}}
+            )
+        else:
+            doc = {
+                "id": str(uuid.uuid4()),
+                "email": email,
+                "subscribed": True,
+                "unsubscribe_token": str(uuid.uuid4()),
+                "subscription_date": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.email_subscriptions.insert_one(doc)
+        
+        return {"message": "Subscribed successfully!", "success": True}
+    except Exception as e:
+        logger.error(f"Subscribe error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to subscribe")
+
+
+@api_router.get("/newsletter/unsubscribe")
+async def unsubscribe_newsletter(token: str):
+    """Unsubscribe from newsletter"""
+    try:
+        result = await db.email_subscriptions.update_one(
+            {"unsubscribe_token": token},
+            {"$set": {"subscribed": False}}
+        )
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Invalid token")
+        
+        frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+        return RedirectResponse(url=f"{frontend_url}/unsubscribe-success")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unsubscribe error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to unsubscribe")
+
+
+@api_router.get("/blog/posts")
+async def get_blog_posts(limit: int = 3):
+    """Get latest blog posts"""
+    try:
+        posts = await db.blog_posts.find(
+            {"status": "published"},
+            sort=[("published_at", -1)]
+        ).limit(limit).to_list(limit)
+        return posts
+    except Exception as e:
+        logger.error(f"Blog fetch error: {e}")
+        return []
+
+
+@api_router.post("/admin/newsletter/generate")
+async def generate_newsletter(current_user: User = Depends(get_current_user)):
+    """Generate weekly blog (Admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    blog = await newsletter.generate_weekly_blog(db)
+    if blog:
+        return {"message": "Blog generated", "title": blog.get("title")}
+    return {"message": "Failed to generate blog"}
+
+
+@api_router.post("/admin/newsletter/send")
+async def send_newsletter_now(current_user: User = Depends(get_current_user)):
+    """Send newsletter to subscribers (Admin only)"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = await newsletter.send_weekly_newsletter(db)
+    return result
 
 
 @app.on_event("shutdown")
