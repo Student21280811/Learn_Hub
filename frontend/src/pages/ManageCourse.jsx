@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import AddLessonForm from '@/components/instructor/AddLessonForm';
 import EditLessonForm from '@/components/instructor/EditLessonForm';
 import AddSectionForm from '@/components/instructor/AddSectionForm';
+import EditSectionForm from '@/components/instructor/EditSectionForm';
 import AddLiveClassForm from '@/components/instructor/AddLiveClassForm';
 import AddQuizForm from '@/components/instructor/AddQuizForm';
 import LessonsList from '@/components/instructor/LessonsList';
@@ -40,6 +41,7 @@ export default function ManageCourse({ user, logout }) {
   const [showAddLiveClass, setShowAddLiveClass] = useState(false);
   const [showAddQuiz, setShowAddQuiz] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
+  const [editingSection, setEditingSection] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const navigate = useNavigate();
 
@@ -291,7 +293,7 @@ export default function ManageCourse({ user, logout }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toast.info('Edit section feature coming soon')}
+                            onClick={() => setEditingSection(section)}
                             title="Edit section"
                           >
                             <Edit size={16} className="text-gray-500" />
@@ -498,6 +500,19 @@ export default function ManageCourse({ user, logout }) {
             onClose={() => setEditingLesson(null)}
             onSuccess={() => {
               setEditingLesson(null);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
+
+      {
+        editingSection && (
+          <EditSectionForm
+            section={editingSection}
+            onClose={() => setEditingSection(null)}
+            onSuccess={() => {
+              setEditingSection(null);
               fetchCourseData();
             }}
           />

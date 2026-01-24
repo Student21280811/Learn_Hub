@@ -1019,6 +1019,38 @@ async def create_section(course_id: str, section_data: dict, current_user: User 
     return section
 
 
+@api_router.patch("/sections/{section_id}")
+async def update_section(section_id: str, updates: dict, current_user: User = Depends(get_current_user)):
+    section = await db.sections.find_one({"id": section_id})
+    if not section:
+        raise HTTPException(status_code=404, detail="Section not found")
+        
+    course = await db.courses.find_one({"id": section['course_id']})
+    if not course:
+        raise HTTPException(status_code=404, detail="Course associated with section not found")
+        
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Remove immutable fields if present
+    updates.pop('id', None)
+    updates.pop('course_id', None)
+    updates.pop('created_at', None)
+    
+    await db.sections.update_one({"id": section_id}, {"$set": updates})
+    return {"message": "Section updated successfully"}
+
+
+
 @api_router.get("/courses/{course_id}/sections")
 async def get_sections(course_id: str, request: Request):
     sections = await db.sections.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(1000)
