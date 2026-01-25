@@ -11,6 +11,15 @@ import logging
 from pathlib import Path
 from dotenv import load_dotenv
 import bcrypt
+import dns.resolver
+
+# Fix for MongoDB Atlas DNS resolution timeouts
+# Forces the use of reliable public DNS servers
+try:
+    dns.resolver.default_resolver = dns.resolver.Resolver(configure=False)
+    dns.resolver.default_resolver.nameservers = ['8.8.8.8', '8.8.4.4', '1.1.1.1']
+except Exception as e:
+    print(f"Warning: Could not configure custom DNS resolver: {e}")
 
 # Load environment variables IMMEDIATELY
 load_dotenv()

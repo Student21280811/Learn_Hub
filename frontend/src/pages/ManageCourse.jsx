@@ -293,6 +293,17 @@ export default function ManageCourse({ user, logout }) {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => {
+                              setSelectedSectionId(section.id);
+                              setShowAddLesson(true);
+                            }}
+                            title="Add lesson to this section"
+                          >
+                            <Plus size={16} className="text-gray-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setEditingSection(section)}
                             title="Edit section"
                           >
