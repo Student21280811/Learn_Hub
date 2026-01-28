@@ -329,6 +329,33 @@ h6 {
   opacity: 0.95;
 }
 
+.cta-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4rem;
+  text-align: left;
+}
+
+.cta-content {
+  flex: 1;
+}
+
+.cta-newsletter {
+  flex: 1;
+  max-width: 500px;
+}
+
+@media (max-width: 968px) {
+  .cta-container {
+    flex-direction: column;
+    text-align: center;
+    gap: 2rem;
+  }
+}
+
 /* ==================== AUTH PAGES ==================== */
 .auth-page {
   min-height: 100vh;

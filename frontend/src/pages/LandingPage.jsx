@@ -4,6 +4,9 @@ import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Users, Award, TrendingUp } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import BlogSection from '@/components/BlogSection';
+import NewsletterSignup from '@/components/NewsletterSignup';
+import '@/components/Newsletter.css';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -30,7 +33,7 @@ export default function LandingPage({ user, logout }) {
   return (
     <div className="landing-page">
       <Navbar user={user} logout={logout} />
-      
+
       {/* Hero Section */}
       <section className="hero-section" data-testid="hero-section">
         <div className="hero-content">
@@ -41,19 +44,19 @@ export default function LandingPage({ user, logout }) {
             Join thousands of learners mastering new skills with world-class instructors
           </p>
           <div className="hero-actions">
-            <Button 
+            <Button
               data-testid="explore-courses-btn"
-              onClick={() => navigate('/courses')} 
+              onClick={() => navigate('/courses')}
               className="btn-primary"
               size="lg"
             >
               Explore Courses
             </Button>
             {!user && (
-              <Button 
+              <Button
                 data-testid="get-started-btn"
-                onClick={() => navigate('/register')} 
-                variant="outline" 
+                onClick={() => navigate('/register')}
+                variant="outline"
                 size="lg"
                 className="btn-outline"
               >
@@ -105,9 +108,9 @@ export default function LandingPage({ user, logout }) {
                 <p className="course-description">{course.description.substring(0, 100)}...</p>
                 <div className="course-footer">
                   <span className="course-price">${course.price}</span>
-                  <Button 
+                  <Button
                     data-testid={`view-course-${course.id}`}
-                    onClick={() => navigate(`/course/${course.id}`)} 
+                    onClick={() => navigate(`/course/${course.id}`)}
                     size="sm"
                   >
                     View Course
@@ -119,18 +122,29 @@ export default function LandingPage({ user, logout }) {
         </div>
       </section>
 
+      {/* Blog Section */}
+      <BlogSection />
+
       {/* CTA Section */}
       <section className="cta-section" data-testid="cta-section">
-        <h2>Start Learning Today</h2>
-        <p>Access courses from top instructors and boost your career</p>
-        <Button 
-          data-testid="browse-courses-btn"
-          onClick={() => navigate('/courses')} 
-          size="lg" 
-          className="btn-primary"
-        >
-          Browse All Courses
-        </Button>
+        <div className="cta-container">
+          <div className="cta-content">
+            <h2>Start Learning Today</h2>
+            <p>Access courses from top instructors and boost your career</p>
+            <Button
+              data-testid="browse-courses-btn"
+              onClick={() => navigate('/courses')}
+              size="lg"
+              className="btn-primary"
+            >
+              Browse All Courses
+            </Button>
+          </div>
+
+          <div className="cta-newsletter">
+            <NewsletterSignup />
+          </div>
+        </div>
       </section>
     </div>
   );
