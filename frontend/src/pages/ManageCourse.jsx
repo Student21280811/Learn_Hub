@@ -10,6 +10,7 @@ import AddSectionForm from '@/components/instructor/AddSectionForm';
 import EditSectionForm from '@/components/instructor/EditSectionForm';
 import AddLiveClassForm from '@/components/instructor/AddLiveClassForm';
 import AddQuizForm from '@/components/instructor/AddQuizForm';
+import EditQuizForm from '@/components/instructor/EditQuizForm';
 import LessonsList from '@/components/instructor/LessonsList';
 import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,6 +43,7 @@ export default function ManageCourse({ user, logout }) {
   const [showAddQuiz, setShowAddQuiz] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
+  const [editingQuiz, setEditingQuiz] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
   const navigate = useNavigate();
 
@@ -434,6 +436,15 @@ export default function ManageCourse({ user, logout }) {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => setEditingQuiz(quiz)}
+                          className="mr-2"
+                          data-testid={`edit-quiz-${quiz.id}`}
+                        >
+                          <Edit size={16} className="text-primary" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleDeleteQuiz(quiz.id)}
                           data-testid={`delete-quiz-${quiz.id}`}
                         >
@@ -550,6 +561,18 @@ export default function ManageCourse({ user, logout }) {
             onClose={() => setShowAddQuiz(false)}
             onSuccess={() => {
               setShowAddQuiz(false);
+              fetchCourseData();
+            }}
+          />
+        )
+      }
+      {
+        editingQuiz && (
+          <EditQuizForm
+            quiz={editingQuiz}
+            onClose={() => setEditingQuiz(null)}
+            onSuccess={() => {
+              setEditingQuiz(null);
               fetchCourseData();
             }}
           />

@@ -84,15 +84,46 @@ export default function CoursePlayer({ user, logout }) {
 
       setEnrollment(currentEnrollment);
 
-      // Load completed lessons from storage
+      // Load completed lessons from backend (primary source of truth)
+      const backendLessons = new Set(currentEnrollment.completed_lessons || []);
+
+      // Also check localStorage for backward compatibility and merge
       const saved = localStorage.getItem(`completed_lessons_${id}`);
       if (saved) {
-        const savedLessons = new Set(JSON.parse(saved));
-        // Filter out lessons that no longer exist
-        const validLessons = new Set(
-          [...savedLessons].filter(id => lessonsRes.data.some(l => l.id === id))
-        );
-        setCompletedLessons(validLessons);
+        const localLessons = JSON.parse(saved);
+        localLessons.forEach(lessonId => backendLessons.add(lessonId));
+      }
+
+      // Filter out lessons that no longer exist
+      const validLessons = new Set(
+        [...backendLessons].filter(lessonId => lessonsRes.data.some(l => l.id === lessonId))
+      );
+      setCompletedLessons(validLessons);
+
+      // Sync progress if it doesn't match actual completed lessons
+      const actualProgress = lessonsRes.data.length > 0
+        ? (validLessons.size / lessonsRes.data.length) * 100
+        : 0;
+      const storedProgress = currentEnrollment.progress || 0;
+
+      // If there's a mismatch (more than 1% difference), sync to backend
+      if (Math.abs(actualProgress - storedProgress) > 1) {
+        try {
+          await axios.patch(
+            `${API}/enrollments/${currentEnrollment.id}/progress`,
+            null,
+            {
+              params: {
+                progress: actualProgress,
+                completed_lessons: JSON.stringify([...validLessons])
+              },
+              headers: { Authorization: `Bearer ${token}` }
+            }
+          );
+          console.log('Progress synced:', actualProgress);
+        } catch (syncError) {
+          console.error('Failed to sync progress:', syncError);
+        }
       }
     } catch (error) {
       toast.error('Failed to load course');
@@ -111,27 +142,32 @@ export default function CoursePlayer({ user, logout }) {
     newCompleted.add(currentLesson.id);
     setCompletedLessons(newCompleted);
 
-    // Save to localStorage
+    // Save to localStorage (backup)
     localStorage.setItem(`completed_lessons_${id}`, JSON.stringify([...newCompleted]));
 
-    // Calculate progress
-    const rawProgress = (newCompleted.size / lessons.length) * 100;
-    const progress = Math.min(100, rawProgress);
-
     const token = localStorage.getItem('token');
-    // Update progress on backend
+
+    // Use the new complete-lesson endpoint for accurate progress calculation
     try {
-      await axios.patch(`${API}/enrollments/${enrollment.id}/progress`, null, {
-        params: { progress },
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.post(
+        `${API}/enrollments/${enrollment.id}/complete-lesson`,
+        null,
+        {
+          params: { lesson_id: currentLesson.id },
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      const { progress, certificate_earned, certificate_id } = response.data;
 
       toast.success('Lesson marked as complete!');
 
       // If all lessons complete, show congratulations and fetch certificates
       if (progress >= 100) {
         toast.success('🎉 Congratulations! You completed the course!');
-        toast.success('Your certificate is ready to download!');
+        if (certificate_earned) {
+          toast.success('Your certificate is ready to download!');
+        }
 
         // Refresh to get certificate
         setTimeout(() => {
@@ -140,6 +176,7 @@ export default function CoursePlayer({ user, logout }) {
       }
     } catch (error) {
       console.error('Failed to update progress:', error);
+      toast.error('Failed to save progress');
     }
   };
 

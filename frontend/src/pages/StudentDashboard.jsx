@@ -130,7 +130,11 @@ export default function StudentDashboard({ user, logout }) {
                 {activeCourses.map((enrollment) => (
                   <div key={enrollment.id} className="enrollment-card" data-testid={`enrollment-${enrollment.id}`}>
                     <div className="enrollment-thumbnail">
-                      <img src={enrollment.course?.thumbnail || '/placeholder-course.png'} alt={enrollment.course?.title} />
+                      <img
+                        src={enrollment.course?.thumbnail || '/placeholder-course.png'}
+                        alt={enrollment.course?.title}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-course.png'; }}
+                      />
                     </div>
                     <div className="enrollment-content">
                       <h3>{enrollment.course?.title}</h3>
@@ -164,7 +168,11 @@ export default function StudentDashboard({ user, logout }) {
                 {completedCourses.map((enrollment) => (
                   <div key={enrollment.id} className="enrollment-card completed">
                     <div className="enrollment-thumbnail">
-                      <img src={enrollment.course?.thumbnail || '/placeholder-course.png'} alt={enrollment.course?.title} />
+                      <img
+                        src={enrollment.course?.thumbnail || '/placeholder-course.png'}
+                        alt={enrollment.course?.title}
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-course.png'; }}
+                      />
                       <div className="completed-badge">Completed</div>
                     </div>
                     <div className="enrollment-content">

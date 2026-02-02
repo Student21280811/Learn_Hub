@@ -6,7 +6,9 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import json
 import tempfile
+
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
@@ -187,6 +189,7 @@ class Enrollment(BaseModel):
     user_id: str
     course_id: str
     progress: float = 0.0  # 0-100
+    completed_lessons: List[str] = []  # List of completed lesson IDs
     status: str = "active"  # active, completed
     enrolled_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1267,32 +1270,130 @@ async def get_my_courses(current_user: User = Depends(get_current_user)):
     for enrollment in enrollments:
         course = await db.courses.find_one({"id": enrollment['course_id']}, {"_id": 0})
         if course:
+            # Recalculate progress based on actual completed lessons
+            completed_lessons = enrollment.get('completed_lessons', [])
+            total_lessons = await db.lessons.count_documents({"course_id": enrollment['course_id']})
+            
+            if total_lessons > 0:
+                actual_progress = (len(completed_lessons) / total_lessons) * 100
+            else:
+                actual_progress = 0
+            
+            # Update if progress doesn't match
+            stored_progress = enrollment.get('progress', 0)
+            if abs(actual_progress - stored_progress) > 1:
+                new_status = 'completed' if actual_progress >= 100 else 'active'
+                await db.enrollments.update_one(
+                    {"id": enrollment['id']},
+                    {"$set": {"progress": actual_progress, "status": new_status}}
+                )
+                enrollment['progress'] = actual_progress
+                enrollment['status'] = new_status
+            
             result.append({**enrollment, "course": course})
     
     return result
 
 
+
 @api_router.patch("/enrollments/{enrollment_id}/progress")
-async def update_progress(enrollment_id: str, progress: float, current_user: User = Depends(get_current_user)):
+async def update_progress(enrollment_id: str, progress: float, completed_lessons: Optional[str] = None, current_user: User = Depends(get_current_user)):
     enrollment = await db.enrollments.find_one({"id": enrollment_id, "user_id": current_user.id})
     if not enrollment:
         raise HTTPException(status_code=404, detail="Enrollment not found")
     
     updates = {"progress": progress}
+    
+    # If completed_lessons is provided (as JSON string), parse and update it
+    parsed_lessons = None
+    if completed_lessons is not None:
+        try:
+            parsed_lessons = json.loads(completed_lessons)
+            updates["completed_lessons"] = parsed_lessons
+        except json.JSONDecodeError:
+            pass  # Ignore invalid JSON
+    
     cert_id = None
     
     if progress >= 100:
         updates['status'] = 'completed'
         # Try to generate certificate (will check quiz requirements)
         cert_id = await generate_certificate_if_eligible(current_user.id, enrollment['course_id'])
+    else:
+        updates['status'] = 'active'
     
     await db.enrollments.update_one({"id": enrollment_id}, {"$set": updates})
     
     return {
         "message": "Progress updated",
         "progress": progress,
+        "completed_lessons": parsed_lessons or enrollment.get('completed_lessons', []),
         "certificate_earned": cert_id is not None,
         "certificate_id": cert_id
+    }
+
+
+
+@api_router.post("/enrollments/{enrollment_id}/complete-lesson")
+async def complete_lesson(enrollment_id: str, lesson_id: str, current_user: User = Depends(get_current_user)):
+    """Mark a lesson as complete and recalculate progress"""
+    enrollment = await db.enrollments.find_one({"id": enrollment_id, "user_id": current_user.id})
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+    
+    # Get current completed lessons
+    completed_lessons = enrollment.get('completed_lessons', [])
+    
+    # Add lesson if not already completed
+    if lesson_id not in completed_lessons:
+        completed_lessons.append(lesson_id)
+    
+    # Get total lessons for this course
+    total_lessons = await db.lessons.count_documents({"course_id": enrollment['course_id']})
+    
+    # Calculate progress
+    if total_lessons > 0:
+        progress = (len(completed_lessons) / total_lessons) * 100
+    else:
+        progress = 0
+    
+    progress = min(100, progress)  # Cap at 100%
+    
+    updates = {
+        "completed_lessons": completed_lessons,
+        "progress": progress
+    }
+    
+    cert_id = None
+    
+    if progress >= 100:
+        updates['status'] = 'completed'
+        cert_id = await generate_certificate_if_eligible(current_user.id, enrollment['course_id'])
+    
+    await db.enrollments.update_one({"id": enrollment_id}, {"$set": updates})
+    
+    return {
+        "message": "Lesson completed",
+        "lesson_id": lesson_id,
+        "progress": progress,
+        "completed_lessons": completed_lessons,
+        "certificate_earned": cert_id is not None,
+        "certificate_id": cert_id
+    }
+
+
+@api_router.get("/enrollments/{enrollment_id}/lesson-progress")
+async def get_lesson_progress(enrollment_id: str, current_user: User = Depends(get_current_user)):
+    """Get completed lessons for an enrollment"""
+    enrollment = await db.enrollments.find_one({"id": enrollment_id, "user_id": current_user.id})
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Enrollment not found")
+    
+    return {
+        "enrollment_id": enrollment_id,
+        "progress": enrollment.get('progress', 0),
+        "completed_lessons": enrollment.get('completed_lessons', []),
+        "status": enrollment.get('status', 'active')
     }
 
 
@@ -2223,6 +2324,41 @@ async def delete_quiz(quiz_id: str, current_user: User = Depends(get_current_use
     
     await db.quizzes.delete_one({"id": quiz_id})
     return {"message": "Quiz deleted"}
+
+
+@api_router.patch("/quizzes/{quiz_id}")
+async def update_quiz(quiz_id: str, quiz_data: dict, current_user: User = Depends(get_current_user)):
+    quiz = await db.quizzes.find_one({"id": quiz_id})
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    
+    course = await db.courses.find_one({"id": quiz['course_id']})
+    # Allow Admin or Owner
+    is_authorized = False
+    if current_user.role == "admin":
+        is_authorized = True
+    else:
+        instructor = await db.instructors.find_one({"user_id": current_user.id})
+        if instructor and instructor['id'] == course['instructor_id']:
+            is_authorized = True
+            
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Update quiz fields
+    update_data = {}
+    if 'title' in quiz_data:
+        update_data['title'] = quiz_data['title']
+    if 'questions' in quiz_data:
+        update_data['questions'] = quiz_data['questions']
+    
+    if not update_data:
+        return quiz
+
+    await db.quizzes.update_one({"id": quiz_id}, {"$set": update_data})
+    
+    updated_quiz = await db.quizzes.find_one({"id": quiz_id}, {"_id": 0})
+    return updated_quiz
 
 
 @api_router.post("/quizzes/{quiz_id}/submit")
