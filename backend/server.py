@@ -2681,8 +2681,8 @@ PDF_DIR.mkdir(exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
-# Include router and add CORS
-app.include_router(api_router)
+# Note: Router is included at the very end of the file after all routes are defined
+
 
 # Define allowed origins (Localhost + Your Domain + Railway)
 origins = [
@@ -2776,8 +2776,38 @@ async def fix_my_account(email: str):
         logger.error(f"Fix account failed: {e}")
         return {"status": "Error", "error": str(e)}
 
+
+@app.get("/fix-coupons")
+async def fix_coupons():
+    """Fix coupon validity dates to be currently valid"""
+    try:
+        now = datetime.now(timezone.utc)
+        # Set valid_from to yesterday and valid_until to 1 year from now
+        valid_from = (now - timedelta(days=1)).isoformat()
+        valid_until = (now + timedelta(days=365)).isoformat()
+        
+        result = await db.coupons.update_many(
+            {},
+            {"$set": {
+                "valid_from": valid_from,
+                "valid_until": valid_until,
+                "is_active": True
+            }}
+        )
+        
+        return {
+            "message": f"Fixed {result.modified_count} coupons",
+            "valid_from": valid_from,
+            "valid_until": valid_until
+        }
+    except Exception as e:
+        logger.error(f"Fix coupons failed: {e}")
+        return {"status": "Error", "error": str(e)}
+
+
 @api_router.get("/debug/courses")
 async def debug_courses():
+
     """Temporary diagnostic endpoint"""
     courses = await db.courses.find({}, {"_id": 0}).to_list(100)
     return courses
@@ -2888,6 +2918,11 @@ async def send_newsletter_now(current_user: User = Depends(get_current_user)):
     return result
 
 
+# Include router AFTER all routes are defined
+app.include_router(api_router)
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+

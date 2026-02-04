@@ -251,8 +251,16 @@ export default function CourseDetail({ user, logout }) {
           </div>
 
           <div className="course-thumbnail-large">
-            <img src={course.thumbnail || '/placeholder-course.png'} alt={course.title} />
+            <img
+              src={course.thumbnail || '/placeholder-course.png'}
+              alt={course.title}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/placeholder-course.png';
+              }}
+            />
           </div>
+
         </div>
 
         {/* Course Content */}

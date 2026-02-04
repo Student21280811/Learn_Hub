@@ -100,8 +100,16 @@ export default function LandingPage({ user, logout }) {
           {courses.map((course) => (
             <div key={course.id} className="course-card" data-testid={`course-card-${course.id}`}>
               <div className="course-thumbnail">
-                <img src={course.thumbnail || '/placeholder-course.png'} alt={course.title} />
+                <img
+                  src={course.thumbnail || '/placeholder-course.png'}
+                  alt={course.title}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/placeholder-course.png';
+                  }}
+                />
               </div>
+
               <div className="course-content">
                 <span className="course-category">{course.category}</span>
                 <h3 className="course-title">{course.title}</h3>
