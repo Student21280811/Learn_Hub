@@ -71,7 +71,7 @@ export default function StripeConnectCard() {
                 {stripeStatus.connected ? (
                     <>
                         <p className="success-message">
-                            ✅ Your Stripe account is connected! You'll automatically receive 90% of course sales.
+                            ✅ Your Stripe account is connected! You'll automatically receive your earnings from course sales.
                         </p>
                         <div className="stripe-details">
                             <small>Account ID: {stripeStatus.stripe_account_id}</small>
@@ -80,7 +80,7 @@ export default function StripeConnectCard() {
                 ) : (
                     <>
                         <p className="warning-message">
-                            Connect your Stripe account to receive automatic payouts (90% of each sale).
+                            Connect your Stripe account to receive automatic payouts.
                         </p>
                         <p className="info-message">
                             <strong>Without Stripe connected:</strong> Payments will be held and paid manually.

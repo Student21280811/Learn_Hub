@@ -12,15 +12,15 @@ export default function EarningsView({ instructorId, totalEarnings }) {
             <p>Total Earnings</p>
           </div>
         </div>
-        
+
         <div className="earnings-info">
           <TrendingUp size={24} className="info-icon" />
           <div>
             <h3>Earnings Breakdown</h3>
-            <p>You earn 85% of each course sale</p>
-            <p className="text-sm text-gray-500">Platform fee: 15%</p>
+            <p>You earn 100% of each course sale</p>
           </div>
         </div>
+
       </div>
 
       <div className="earnings-note">
