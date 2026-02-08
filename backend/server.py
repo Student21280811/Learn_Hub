@@ -2679,7 +2679,7 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 THUMBNAIL_DIR.mkdir(exist_ok=True)
 PDF_DIR.mkdir(exist_ok=True)
 
-app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+# Static files mount is done at app creation (line 80)
 
 # Note: Router is included at the very end of the file after all routes are defined
 

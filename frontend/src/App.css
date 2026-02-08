@@ -1915,6 +1915,39 @@ h6 {
   color: #6b7280;
 }
 
+/* Thumbnail Edit Section */
+.thumbnail-section {
+  margin-bottom: 1.5rem;
+}
+
+.thumbnail-edit-container {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.thumbnail-preview-large {
+  width: 280px;
+  height: 180px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: #e5e7eb;
+  border: 2px dashed #d1d5db;
+}
+
+.thumbnail-preview-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 /* Course Structure */
 .structure-section {
   background: white;

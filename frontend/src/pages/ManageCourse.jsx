@@ -12,7 +12,7 @@ import AddLiveClassForm from '@/components/instructor/AddLiveClassForm';
 import AddQuizForm from '@/components/instructor/AddQuizForm';
 import EditQuizForm from '@/components/instructor/EditQuizForm';
 import LessonsList from '@/components/instructor/LessonsList';
-import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle, Trash2, Edit } from 'lucide-react';
+import { Plus, ArrowLeft, FolderPlus, Video, HelpCircle, Trash2, Edit, Image as ImageIcon, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -45,6 +45,7 @@ export default function ManageCourse({ user, logout }) {
   const [editingSection, setEditingSection] = useState(null);
   const [editingQuiz, setEditingQuiz] = useState(null);
   const [selectedSectionId, setSelectedSectionId] = useState(null);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -170,6 +171,47 @@ export default function ManageCourse({ user, logout }) {
       fetchCourseData();
     } catch (error) {
       toast.error('Failed to delete section');
+    }
+  };
+
+  const handleThumbnailUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+
+    setUploadingThumbnail(true);
+    try {
+      const token = localStorage.getItem('token');
+
+      // Upload the thumbnail
+      const uploadRes = await axios.post(`${API}/upload/thumbnail`, formDataUpload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      const thumbnailUrl = `${BACKEND_URL}${uploadRes.data.url}`;
+
+      // Update the course with new thumbnail
+      await axios.patch(`${API}/courses/${id}`, { thumbnail: thumbnailUrl }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      toast.success('Thumbnail updated successfully!');
+      fetchCourseData();
+    } catch (error) {
+      toast.error('Failed to upload thumbnail');
+      console.error(error);
+    } finally {
+      setUploadingThumbnail(false);
     }
   };
 
@@ -460,6 +502,44 @@ export default function ManageCourse({ user, logout }) {
 
           <TabsContent value="details">
             <div className="course-details-view">
+              {/* Thumbnail Section */}
+              <div className="detail-card thumbnail-section">
+                <h3><ImageIcon size={18} className="inline mr-2" />Course Thumbnail</h3>
+                <div className="thumbnail-edit-container">
+                  <div className="thumbnail-preview-large">
+                    <img
+                      src={course.thumbnail || '/placeholder-course.png'}
+                      alt="Course thumbnail"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/placeholder-course.png';
+                      }}
+                    />
+                  </div>
+                  <div className="thumbnail-actions">
+                    <input
+                      id="thumbnail-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleThumbnailUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => document.getElementById('thumbnail-upload').click()}
+                      disabled={uploadingThumbnail}
+                      data-testid="change-thumbnail-btn"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      {uploadingThumbnail ? 'Uploading...' : 'Change Thumbnail'}
+                    </Button>
+                    {!course.thumbnail && (
+                      <p className="text-sm text-gray-500 mt-2">No thumbnail uploaded. Add one to make your course stand out!</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="detail-card">
                 <h3>Course Information</h3>
                 <div className="detail-item">
