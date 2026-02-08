@@ -10,7 +10,7 @@ Follow these steps to run the app on your own computer.
 
 ### 1. Prerequisites
 - **Python 3.11+** installed
-- **Node.js & npm/yarn** installed
+- **Node.js & pnpm** installed
 - **MongoDB** (local installation or MongoDB Atlas)
 
 ### 2. Backend Setup
@@ -45,13 +45,13 @@ Follow these steps to run the app on your own computer.
    ```
 2. Install dependencies:
    ```bash
-   npm install  # or yarn install
+   pnpm install
    ```
 3. Configure `.env`:
    - Set `REACT_APP_BACKEND_URL=http://localhost:8001` for local testing.
 4. Start the development server:
    ```bash
-   npm start
+   pnpm start
    ```
 
 ---
@@ -73,7 +73,7 @@ Whenever you make changes to the frontend:
    ```
 3. Build the production files:
    ```bash
-   npm run build
+   pnpm run build
    ```
 4. **Upload**: Use FTP/SFTP to upload the contents of the `frontend/build` folder to your Fasthosts server directory (usually `public_html`).
 

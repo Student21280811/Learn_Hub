@@ -25,7 +25,7 @@ Before running this application, ensure you have the following installed:
 |----------|---------|---------------|
 | **Python** | 3.9+ | https://www.python.org/downloads/ |
 | **Node.js** | 18+ | https://nodejs.org/ |
-| **npm** | 9+ | Comes with Node.js |
+| **pnpm** | 8+ | https://pnpm.io/installation |
 | **Git** | Latest | https://git-scm.com/ |
 
 ### Required Accounts (for full functionality)
@@ -106,7 +106,7 @@ cd frontend
 ### Step 2: Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### Step 3: Configure Environment Variables
@@ -188,7 +188,7 @@ uvicorn server:app --reload --port 8001
 **Terminal 2 - Frontend:**
 ```bash
 cd frontend
-npm start
+pnpm start
 ```
 
 ### Option 2: Using Specific Ports
@@ -200,7 +200,7 @@ uvicorn server:app --reload --host 0.0.0.0 --port 8001
 
 **Frontend (default: 3000):**
 ```bash
-npm start
+pnpm start
 ```
 
 ### Access Points
@@ -249,14 +249,14 @@ ModuleNotFoundError: No module named 'xyz'
 pip install -r requirements.txt
 ```
 
-#### 3. npm Errors (Frontend)
+#### 3. pnpm Errors (Frontend)
 ```
 npm ERR! code ERESOLVE
 ```
 **Solution:**
 ```bash
 rm -rf node_modules package-lock.json
-npm install
+pnpm install
 ```
 
 #### 4. Port Already in Use
@@ -290,7 +290,7 @@ For production deployment, you'll need:
 2. **Build the frontend:**
    ```bash
    cd frontend
-   npm run build
+   pnpm run build
    ```
 3. **Use a process manager for backend (e.g., PM2, Supervisor)**
 4. **Set up NGINX as reverse proxy**
@@ -318,11 +318,11 @@ uvicorn server:app --reload --port 8001
 
 # 4. Frontend setup (new terminal)
 cd frontend
-npm install
+pnpm install
 # Edit .env if needed
 
 # 5. Start frontend
-npm start
+pnpm start
 
 # 6. Open browser
 # http://localhost:3000

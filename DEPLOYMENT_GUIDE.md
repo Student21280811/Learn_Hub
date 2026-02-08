@@ -85,7 +85,7 @@ sudo apt install -y nodejs
 sudo apt install -y python3.11 python3.11-venv python3-pip
 
 # Install Yarn (for frontend)
-npm install -g yarn
+npm install -g pnpm
 
 # Install Nginx (reverse proxy)
 sudo apt install -y nginx
@@ -100,7 +100,7 @@ sudo systemctl start mongod
 sudo systemctl enable mongod
 
 # Install PM2 (process manager)
-npm install -g pm2
+pnpm add -g pm2
 
 # Install Certbot (for SSL)
 sudo apt install -y certbot python3-certbot-nginx
@@ -285,13 +285,13 @@ REACT_APP_BACKEND_URL=https://yourdomain.com
 ### 3. Install Dependencies
 
 ```bash
-yarn install
+pnpm install
 ```
 
 ### 4. Build for Production
 
 ```bash
-yarn build
+pnpm run build
 ```
 
 This creates an optimized production build in `/var/www/learnhub/frontend/build`
@@ -303,7 +303,7 @@ Frontend will be served as static files by Nginx. See [Domain & SSL Setup](#doma
 ### 5. Option B: Serve with PM2 + Serve
 
 ```bash
-npm install -g serve
+pnpm add -g serve
 
 # Create PM2 config for frontend
 cat > /var/www/learnhub/frontend/ecosystem.frontend.js << 'EOF'
@@ -663,7 +663,7 @@ git push heroku main
 ```bash
 cd /var/www/learnhub/frontend
 # Update .env with Heroku backend URL
-npm run build
+pnpm run build
 # Deploy to Netlify/Vercel (frontend)
 ```
 
@@ -726,7 +726,7 @@ curl https://yourdomain.com/api/courses
 
 ```bash
 # Install monitoring tools
-npm install -g pm2-logrotate
+pnpm add -g pm2-logrotate
 pm2 install pm2-logrotate
 
 # Setup log rotation
