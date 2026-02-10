@@ -161,6 +161,7 @@ class Lesson(BaseModel):
     type: str  # video, pdf, text, live_class
     content_url: Optional[str] = None
     content_text: Optional[str] = None
+    description: Optional[str] = None  # Lesson description/details
     notes_url: Optional[str] = None # Added for supplementary reading materials
     duration: Optional[int] = None  # in minutes
     order: int = 0

@@ -17,6 +17,7 @@ export default function AddLessonForm({ courseId, sectionId, onClose, onSuccess 
     type: 'video',
     content_url: '',
     content_text: '',
+    description: '',
     notes_url: '',
     duration: '',
     order: 1
@@ -222,6 +223,20 @@ export default function AddLessonForm({ courseId, sectionId, onClose, onSuccess 
               <p className="text-sm text-gray-500 mt-1">You can use HTML tags for formatting</p>
             </div>
           )}
+
+          <div className="form-group">
+            <Label htmlFor="description">Lesson Description / Details</Label>
+            <Textarea
+              id="description"
+              data-testid="lesson-description-input"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Write a detailed description of this lesson. Explain what students will learn, key topics covered, and any important concepts..."
+              rows={5}
+              style={{ resize: 'vertical', minHeight: '120px' }}
+            />
+            <p className="text-sm text-gray-500 mt-1">Provide a summary of the lesson content for students</p>
+          </div>
 
           <div className="form-group border-t pt-4 mt-4">
             <div className="label-with-action">
